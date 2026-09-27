@@ -55,7 +55,7 @@ titled from its name.
 {% comment %}The title comes from the data, so the heading is HTML: kramdown would read a
 Markdown heading's escaped text as Markdown.{% endcomment %}
 {% if status == "alumni" %}
-<h3 id="{{ title | slugify | escape }}">{{ title | escape }}</h3>
+<h3 id="alumni-{{ title | slugify | escape }}">{{ title | escape }}</h3>
 {% else %}
 <h2 id="{{ title | slugify | escape }}">{{ title | escape }}</h2>
 {% endif %}
