@@ -5,7 +5,8 @@ Write the Jekyll settings that come from lab.yaml to a separate config file.
 The site title and description come from `lab.name` and `lab.description`;
 `url`, `baseurl` and `people_groups` (which titles and orders the groups on
 the People page) come from the optional `site` section. A `url` that is not
-an http or https origin is refused, and nothing is written. Build with both
+an http or https origin is refused, and nothing is written; one trailing slash
+is dropped. Build with both
 files so these values override site/_config.yml:
 
     python scripts/generate_site_config.py lab.yaml site/_config.generated.yml
@@ -22,7 +23,8 @@ import yaml
 
 # The theme prints `url` unescaped as the footer's link, on every page, so it
 # must be a value that needs no escaping and is a web address: an http or
-# https origin (scheme, host and optional port, nothing else). `baseurl` is
+# https origin (scheme, host and optional port, nothing else; one trailing
+# slash is dropped, as Jekyll would double it before baseurl). `baseurl` is
 # printed only through relative_url and absolute_url, which percent-encode it.
 HOST = re.compile(r"[A-Za-z0-9.-]+")
 
@@ -31,20 +33,25 @@ class ConfigError(ValueError):
     """A lab.yaml value this site cannot use."""
 
 
-def check_url(url) -> None:
+def check_url(url) -> str:
+    """Return `url` without a trailing slash, or refuse it."""
     if not isinstance(url, str):
         raise ConfigError(f"site.url must be a string, not {url!r}")
+    given = url
+    if url.endswith("/") and not url.endswith("//"):
+        url = url[:-1]
     parts = urlsplit(url)
     try:
         parts.port
     except ValueError:
-        raise ConfigError(f"site.url has an invalid port: {url!r}") from None
+        raise ConfigError(f"site.url has an invalid port: {given!r}") from None
     if (parts.scheme not in ("http", "https") or parts.username is not None
             or parts.password is not None or not HOST.fullmatch(parts.hostname or "")
             or parts.path or parts.query or parts.fragment
             or url != f"{parts.scheme}://{parts.netloc}"):
         raise ConfigError(f"site.url must be an http or https origin such as "
-                          f"https://example.org, not {url!r}")
+                          f"https://example.org, not {given!r}")
+    return url
 
 
 def site_config(lab_config: dict) -> dict:
@@ -57,8 +64,7 @@ def site_config(lab_config: dict) -> dict:
     if lab.get('description'):
         config['description'] = lab['description']
     if site.get('url'):
-        check_url(site['url'])
-        config['url'] = site['url']
+        config['url'] = check_url(site['url'])
     config['baseurl'] = site.get('baseurl', '')
     if site.get('people_groups'):
         config['people_groups'] = site['people_groups']

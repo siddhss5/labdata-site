@@ -75,6 +75,9 @@ class TestGenerateSiteConfig:
     "javascript:alert(1)//x.example.org",
     "https://user@x.example.org",
     "https://x.example.org/path?q=1",
+    "https://x.example.org/path/",
+    "https://x.example.org//",
+    "https://x.example.org/?q=1",
 ])
 def test_unsafe_url_is_refused(tmp_path, url):
     lab_yaml = tmp_path / "lab.yaml"
@@ -87,3 +90,12 @@ def test_unsafe_url_is_refused(tmp_path, url):
     assert result.returncode != 0
     assert "site.url" in result.stderr
     assert not out.exists()
+
+
+def test_url_trailing_slash_is_dropped(tmp_path):
+    """Jekyll joins url and baseurl as they are, so the slash would double."""
+    lab_yaml = tmp_path / "lab.yaml"
+    lab_yaml.write_text(yaml.safe_dump({"site": {"url": "https://x.example.org/",
+                                                 "baseurl": "/lab"}}))
+    config = TestGenerateSiteConfig()._run(lab_yaml, tmp_path)
+    assert config["url"] + config["baseurl"] == "https://x.example.org/lab"

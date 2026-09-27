@@ -32,7 +32,8 @@ is not the owner's real lab site.
 description, into `site/_config.generated.yml`. sslabdata itself ignores that
 section. The theme prints `url` unescaped as a link on every
 page, so the script refuses, and writes nothing, when `url` is not an http or
-https origin (`https://example.org`, with no path).
+https origin (`https://example.org`, with no path; a single trailing slash is
+dropped).
 
 ## Rendering rules
 
