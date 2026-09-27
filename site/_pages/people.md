@@ -52,10 +52,12 @@ titled from its name.
 {% assign group = "" | split: "" %}
 {% for r in rs %}{% assign with_role = members | where: "role", r %}{% assign group = group | concat: with_role %}{% endfor %}
 {% if group.size > 0 %}
+{% comment %}The title comes from the data, so the heading is HTML: kramdown would read a
+Markdown heading's escaped text as Markdown.{% endcomment %}
 {% if status == "alumni" %}
-### {{ title | escape }}
+<h3 id="alumni-{{ title | slugify | escape }}">{{ title | escape }}</h3>
 {% else %}
-## {{ title | escape }}
+<h2 id="{{ title | slugify | escape }}">{{ title | escape }}</h2>
 {% endif %}
 
 {% if status == "current" and rs contains "professor" %}

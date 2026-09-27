@@ -2,7 +2,7 @@
 
 Each check is a property read from the markup alone: one <h1> and no skipped
 heading level going down, an alt on every <img>, a lang on <html>, a non-empty
-<title>, and a name on every link (its text, an aria-label, an
+<title>, no id used twice, and a name on every link (its text, an aria-label, an
 aria-labelledby or the alt of an image inside it). Each check also has a test
 that it fails on a small page that breaks it.
 
@@ -26,11 +26,14 @@ class Structure(HTMLParser):
         self.headings = []
         self.images_without_alt = []
         self.nameless_links = []
+        self.ids = []
         self._link = None
         self._in_title = False
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
+        if "id" in attrs:
+            self.ids.append(attrs["id"])
         if tag == "html":
             self.lang = attrs.get("lang")
         elif tag == "title" and self.title is None:
@@ -80,6 +83,8 @@ def problems(text):
     if not (page.title or "").strip():
         found.append("no <title> text")
     found += [f"link without a name: {href}" for href in page.nameless_links]
+    found += [f"id used {page.ids.count(i)} times: {i}"
+              for i in sorted(set(page.ids)) if page.ids.count(i) > 1]
     return found
 
 
@@ -111,6 +116,7 @@ def test_good_page_has_no_problems():
     (wrap('<h1>A</h1><a href="/x"></a>'), "link without a name: /x"),
     (wrap('<h1>A</h1><a href="/x"><i class="icon"></i> </a>'), "link without a name: /x"),
     (wrap('<h1>A</h1><a href="/x"><img src="i.png" alt=""></a>'), "link without a name: /x"),
+    (wrap('<h1 id="a">A</h1><h2 id="a">B</h2>'), "id used 2 times: a"),
 ])
 def test_each_check_fails_on_a_page_that_breaks_it(text, expected):
     assert problems(text) == [expected]

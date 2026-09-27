@@ -86,6 +86,9 @@ SCRIPT, PLAIN, MISSING = "brown2025tidy", "davis2025handover", "fischer2025bench
 ADA, PI, PROJECT, COLLAB = "bbrown", "aadams", "homebot", "trent-turner-62d45583"
 # A person the fixture adds with no works, as a new member would have.
 NEWCOMER = "newcomer"
+# A role written as Markdown, which a group titled from it must print as text.
+# Its URL is not one of BAD_URLS, which no page may contain even as text.
+MARKDOWN_ROLE = "[x](javascript:alert(document.domain)) **b**"
 
 
 def fixture_document(document):
@@ -139,6 +142,8 @@ def fixture_document(document):
     people["iingram"]["role"] = "professor"
     document["people"].append({**people["eevans"], "id": NEWCOMER, "name": "Nadia Newcomer",
                                "work_ids": []})
+    document["people"].append({**people["eevans"], "id": "markdownrole", "name": "Mark Down",
+                               "role": MARKDOWN_ROLE, "work_ids": []})
     projects[PROJECT].update({"title": "*Project* <b>One</b>",
                               "description": "Project _description_ <script>x</script>",
                               "status": "active", "website": BAD_URLS[4]})
@@ -708,6 +713,7 @@ def test_people_groups_title_and_order_and_show_each_role_once(built):
         ("Faculty", ids("current", "professor")), ("Research Staff", ids("current", "engineer")),
         ("Phd Student", ids("current", "phd_student")),
         ("Visiting Scholar", ids("current", "visiting_scholar")),
+        (MARKDOWN_ROLE, ids("current", MARKDOWN_ROLE)),
         ("Alumni", []), ("Faculty", ids("alumni", "professor")),
         ("Phd Student", ids("alumni", "phd_student")), ("Postdoc", ids("alumni", "postdoc")),
         ("Ms Student", ids("alumni", "ms_student")),
@@ -720,10 +726,21 @@ def test_without_people_groups_each_role_is_titled_from_its_name(unconfigured):
         ("Professor", ids("current", "professor")), ("Phd Student", ids("current", "phd_student")),
         ("Engineer", ids("current", "engineer")),
         ("Visiting Scholar", ids("current", "visiting_scholar")),
+        (MARKDOWN_ROLE, ids("current", MARKDOWN_ROLE)),
         ("Alumni", []), ("Professor", ids("alumni", "professor")),
         ("Phd Student", ids("alumni", "phd_student")), ("Postdoc", ids("alumni", "postdoc")),
         ("Ms Student", ids("alumni", "ms_student")),
     ]
+
+
+@pytest.mark.parametrize("site", ["built", "unconfigured"])
+def test_people_group_titled_from_a_markdown_role_is_text(site, request):
+    """A group title is printed where kramdown does not read it: the role's
+    Markdown link and emphasis are its heading's text, not markup."""
+    text = page(request.getfixturevalue(site), "people")
+    assert re.search(r'<h2[^>]*>' + re.escape(MARKDOWN_ROLE) + '</h2>', text)
+    assert 'href="javascript:' not in text
+    assert "<strong>" not in text
 
 
 def test_demo_people_page_groups(demo):
