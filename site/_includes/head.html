@@ -1,7 +1,8 @@
 {% comment %}
-A copy of minimal-mistakes-jekyll 4.28.1 `_includes/head.html`. The only change
-is the removal of its two Font Awesome CDN lines (issue #17). Whoever upgrades
-the theme must re-check this file against the new upstream head.html.
+A copy of minimal-mistakes-jekyll 4.28.1 `_includes/head.html`. The changes
+are the removal of its two Font Awesome CDN lines (issue #17) and the escaping
+of `site.title`, the lab's name, in the feed link's title (issue #42). Whoever
+upgrades the theme must re-check this file against the new upstream head.html.
 {% endcomment -%}
 {% assign locale = include.locale | default: site.locale %}
 <meta charset="utf-8">
@@ -9,7 +10,7 @@ the theme must re-check this file against the new upstream head.html.
 {% include seo.html locale=locale %}
 
 {% unless site.atom_feed.hide %}
-  <link href="{% if site.atom_feed.path %}{{ site.atom_feed.path }}{% else %}{{ '/feed.xml' | relative_url }}{% endif %}" type="application/atom+xml" rel="alternate" title="{{ site.title }} Feed">
+  <link href="{% if site.atom_feed.path %}{{ site.atom_feed.path }}{% else %}{{ '/feed.xml' | relative_url }}{% endif %}" type="application/atom+xml" rel="alternate" title="{{ site.title | escape }} Feed">
 {% endunless %}
 
 {%- comment %} https://docs.google.com/presentation/d/1rmxwWa9P6_xHqonmh5ONXRS-jPc5XKbnv99Rjkhe04s/present {% endcomment -%}

@@ -20,7 +20,7 @@ is not the owner's real lab site.
 
 | Path | What it is |
 |------|------------|
-| [`site/`](site/) | The Jekyll site: `_config.yml`, `_pages/`, `_includes/`, `_data/navigation.yml`, `assets/js/works-filter.js`, `feed.xml` (an Atom feed of the works that have a year, where the theme's footer and head link), and the `Gemfile` / `Gemfile.lock` that pin Jekyll; `_includes/head.html` is a copy of the theme's without its Font Awesome CDN load; re-check it when upgrading the theme |
+| [`site/`](site/) | The Jekyll site: `_config.yml`, `_pages/`, `_includes/`, `_data/navigation.yml`, `assets/js/works-filter.js`, `feed.xml` (an Atom feed of the works that have a year, where the theme's footer and head link), and the `Gemfile` / `Gemfile.lock` that pin Jekyll; `_includes/head.html` is a copy of the theme's without its Font Awesome CDN load and with the lab's name escaped in the feed link; re-check it when upgrading the theme |
 | [`demo/`](demo/) | Example Lab's `lab.yaml`, `people.yaml`, `projects.yaml`, `collaborators.yaml` and `bib/` |
 | [`scripts/generate_site_config.py`](scripts/generate_site_config.py) | Writes the Jekyll settings that come from `lab.yaml` to `site/_config.generated.yml` |
 | [`scripts/generate_pages.py`](scripts/generate_pages.py) | Writes a page for every work, person, project and co-author in the data file to `site/_entities/`, each linking to the others it names, the co-author graph page, and a `.bib` of each person's and project's works, their `bibtex` fields unchanged |
@@ -30,7 +30,10 @@ is not the owner's real lab site.
 `scripts/generate_site_config.py` reads the optional `site:` section of
 `lab.yaml` (`url`, `baseurl` and `people_groups`) and writes it, with the lab name and
 description, into `site/_config.generated.yml`. sslabdata itself ignores that
-section.
+section. The theme prints `url` unescaped as a link on every
+page, so the script refuses, and writes nothing, when `url` is not an http or
+https origin (`https://example.org`, with no path; a single trailing slash is
+dropped).
 
 ## Rendering rules
 

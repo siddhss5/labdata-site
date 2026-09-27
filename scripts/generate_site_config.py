@@ -4,7 +4,9 @@ Write the Jekyll settings that come from lab.yaml to a separate config file.
 
 The site title and description come from `lab.name` and `lab.description`;
 `url`, `baseurl` and `people_groups` (which titles and orders the groups on
-the People page) come from the optional `site` section. Build with both
+the People page) come from the optional `site` section. A `url` that is not
+an http or https origin is refused, and nothing is written; one trailing slash
+is dropped. Build with both
 files so these values override site/_config.yml:
 
     python scripts/generate_site_config.py lab.yaml site/_config.generated.yml
@@ -12,9 +14,44 @@ files so these values override site/_config.yml:
 """
 
 import argparse
+import re
+import sys
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import yaml
+
+# The theme prints `url` unescaped as the footer's link, on every page, so it
+# must be a value that needs no escaping and is a web address: an http or
+# https origin (scheme, host and optional port, nothing else; one trailing
+# slash is dropped, as Jekyll would double it before baseurl). `baseurl` is
+# printed only through relative_url and absolute_url, which percent-encode it.
+HOST = re.compile(r"[A-Za-z0-9.-]+")
+
+
+class ConfigError(ValueError):
+    """A lab.yaml value this site cannot use."""
+
+
+def check_url(url) -> str:
+    """Return `url` without a trailing slash, or refuse it."""
+    if not isinstance(url, str):
+        raise ConfigError(f"site.url must be a string, not {url!r}")
+    given = url
+    if url.endswith("/") and not url.endswith("//"):
+        url = url[:-1]
+    parts = urlsplit(url)
+    try:
+        parts.port
+    except ValueError:
+        raise ConfigError(f"site.url has an invalid port: {given!r}") from None
+    if (parts.scheme not in ("http", "https") or parts.username is not None
+            or parts.password is not None or not HOST.fullmatch(parts.hostname or "")
+            or parts.path or parts.query or parts.fragment
+            or url != f"{parts.scheme}://{parts.netloc}"):
+        raise ConfigError(f"site.url must be an http or https origin such as "
+                          f"https://example.org, not {given!r}")
+    return url
 
 
 def site_config(lab_config: dict) -> dict:
@@ -27,7 +64,7 @@ def site_config(lab_config: dict) -> dict:
     if lab.get('description'):
         config['description'] = lab['description']
     if site.get('url'):
-        config['url'] = site['url']
+        config['url'] = check_url(site['url'])
     config['baseurl'] = site.get('baseurl', '')
     if site.get('people_groups'):
         config['people_groups'] = site['people_groups']
@@ -42,12 +79,16 @@ def main():
 
     with open(args.lab_yaml, 'r', encoding='utf-8') as f:
         lab_config = yaml.safe_load(f) or {}
+    try:
+        config = site_config(lab_config)
+    except ConfigError as e:
+        sys.exit(f"{args.lab_yaml}: {e}")
 
     output = Path(args.output)
     output.parent.mkdir(parents=True, exist_ok=True)
     with open(output, 'w', encoding='utf-8') as f:
         f.write(f"# Generated from {args.lab_yaml} by scripts/generate_site_config.py. Do not edit.\n")
-        yaml.safe_dump(site_config(lab_config), f, allow_unicode=True, sort_keys=False)
+        yaml.safe_dump(config, f, allow_unicode=True, sort_keys=False)
     print(f"Wrote {output}")
 
 
