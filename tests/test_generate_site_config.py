@@ -4,6 +4,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
 import yaml
 
 
@@ -65,3 +66,24 @@ class TestGenerateSiteConfig:
         lab_yaml = tmp_path / "lab.yaml"
         lab_yaml.write_text(yaml.safe_dump({"site": {"people_groups": groups}}))
         assert self._run(lab_yaml, tmp_path)["people_groups"] == groups
+
+
+# The theme prints the url unescaped as a link in every page's footer, so a url
+# that could leave the attribute or is not an http or https origin is refused.
+@pytest.mark.parametrize("url", [
+    'https://x.example.org"><img src=x onerror=alert(1)>',
+    "javascript:alert(1)//x.example.org",
+    "https://user@x.example.org",
+    "https://x.example.org/path?q=1",
+])
+def test_unsafe_url_is_refused(tmp_path, url):
+    lab_yaml = tmp_path / "lab.yaml"
+    lab_yaml.write_text(yaml.safe_dump({"lab": {"name": "Lab"}, "site": {"url": url}}))
+    out = tmp_path / "_config.generated.yml"
+    result = subprocess.run(
+        [sys.executable, "scripts/generate_site_config.py", str(lab_yaml), str(out)],
+        capture_output=True, text=True, cwd=REPO_ROOT,
+    )
+    assert result.returncode != 0
+    assert "site.url" in result.stderr
+    assert not out.exists()

@@ -30,7 +30,9 @@ is not the owner's real lab site.
 `scripts/generate_site_config.py` reads the optional `site:` section of
 `lab.yaml` (`url`, `baseurl` and `people_groups`) and writes it, with the lab name and
 description, into `site/_config.generated.yml`. sslabdata itself ignores that
-section.
+section. The theme prints `url` unescaped as a link on every
+page, so the script refuses, and writes nothing, when `url` is not an http or
+https origin (`https://example.org`, with no path).
 
 ## Rendering rules
 
