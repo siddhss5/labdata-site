@@ -176,8 +176,9 @@ def _jekyll_available():
     return result.returncode == 0
 
 
-def build(tmp, data, people_groups=None, theme=False):
-    """Build a copy of site/ with `data` as _data/lab.yml; return the output."""
+def build(tmp, data, people_groups=None, theme=False, site_config=None):
+    """Build a copy of site/ with `data` as _data/lab.yml; return the output.
+    `site_config`, a file such as generate_site_config.py writes, is read last."""
     if not _jekyll_available():
         pytest.skip("bundle exec jekyll is not available")
     source = tmp / "site"
@@ -207,7 +208,8 @@ def build(tmp, data, people_groups=None, theme=False):
     result = subprocess.run(
         ["bundle", "exec", "jekyll", "build", "--source", str(source),
          "--destination", str(dest),
-         "--config", f"{source / '_config.yml'},{source / '_config.test.yml'}"],
+         "--config", ",".join(str(c) for c in [source / "_config.yml", source / "_config.test.yml",
+                                                  site_config] if c)],
         capture_output=True, text=True, env=env, cwd=SITE)
     assert result.returncode == 0, result.stdout + result.stderr
     return dest
@@ -797,3 +799,48 @@ def test_demo_with_theme_loads_nothing_from_another_host(tmp_path):
         foreign = [u for u in parser.urls
                    if urlsplit(u).netloc not in ("", "fixture.invalid")]
         assert foreign == [], p
+
+
+# A lab name that closes an attribute and opens an element if printed unescaped.
+LAB_NAME = """X"><img src=x onerror=alert(2)> 'Lab'"""
+
+
+class FeedLinks(HTMLParser):
+    """The title of each Atom feed <link>, and each <img> src, as parsed."""
+
+    def __init__(self):
+        super().__init__()
+        self.titles = []
+        self.images = []
+
+    def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if tag == "link" and attrs.get("type") == "application/atom+xml":
+            self.titles.append(attrs.get("title"))
+        if tag == "img":
+            self.images.append(attrs.get("src"))
+
+
+def test_lab_name_is_text_in_the_feed_link_on_every_page(tmp_path):
+    """Built with the theme and the config generate_site_config.py writes from
+    a lab.yaml whose name holds quotes and angle brackets, every page's feed
+    link is titled with the name as text, and no page has an element from it."""
+    lab = yaml.safe_load((REPO_ROOT / "demo" / "lab.yaml").read_text(encoding="utf-8"))
+    lab["lab"]["name"] = LAB_NAME
+    lab["lab"]["description"] = LAB_NAME
+    lab_yaml = tmp_path / "lab.yaml"
+    lab_yaml.write_text(yaml.safe_dump(lab, allow_unicode=True), encoding="utf-8")
+    config = tmp_path / "hostile.yml"
+    subprocess.run([sys.executable, "scripts/generate_site_config.py", lab_yaml, config],
+                   check=True, cwd=REPO_ROOT)
+    data, _ = demo_data(tmp_path)
+    built = build(tmp_path, data, theme=True, site_config=config)
+    pages = sorted(built.rglob("*.html"))
+    assert pages
+    for p in pages:
+        text = p.read_text(encoding="utf-8")
+        parser = FeedLinks()
+        parser.feed(text)
+        assert parser.titles == [f"{LAB_NAME} Feed"], p
+        assert "x" not in parser.images, p
+        assert "<img src=x" not in text, p
