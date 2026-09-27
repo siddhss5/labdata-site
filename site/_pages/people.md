@@ -40,6 +40,7 @@ titled from its name.
   {% assign group_titles = group_titles | push: title %}{% assign group_roles = group_roles | push: rs %}
 {% endunless %}{% endfor %}
 
+{% assign used_ids = "alumni,collaborators" | split: "," %}
 {% assign statuses = "current,alumni" | split: "," %}
 {% for status in statuses %}
 {% assign members = people | where: "status", status %}
@@ -52,10 +53,20 @@ titled from its name.
 {% assign group = "" | split: "" %}
 {% for r in rs %}{% assign with_role = members | where: "role", r %}{% assign group = group | concat: with_role %}{% endfor %}
 {% if group.size > 0 %}
+{% comment %}
+The title comes from the data, so the heading is HTML, which kramdown leaves
+as it is: as a Markdown heading, kramdown would read the escaped title as
+Markdown. Its id is the title slugified, made unique with -1, -2, ... as
+kramdown makes the ids of the page's Markdown headings.
+{% endcomment %}
+{% assign base_id = title | slugify %}{% if base_id == "" %}{% assign base_id = "section" %}{% endif %}
+{% assign heading_id = base_id %}
+{% for n in (1..used_ids.size) %}{% if used_ids contains heading_id %}{% assign heading_id = base_id | append: "-" | append: n %}{% endif %}{% endfor %}
+{% assign used_ids = used_ids | push: heading_id %}
 {% if status == "alumni" %}
-### {{ title | escape }}
+<h3 id="{{ heading_id | escape }}">{{ title | escape }}</h3>
 {% else %}
-## {{ title | escape }}
+<h2 id="{{ heading_id | escape }}">{{ title | escape }}</h2>
 {% endif %}
 
 {% if status == "current" and rs contains "professor" %}
