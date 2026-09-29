@@ -1,0 +1,20 @@
+version: 2
+updates:
+  # Workflow actions are pinned to commit SHAs; Dependabot proposes the new
+  # release and SHA together so each bump can be reviewed.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Python dependencies locked in uv.lock, including the sslabdata pin.
+  - package-ecosystem: "uv"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # Jekyll gems locked in site/Gemfile.lock.
+  - package-ecosystem: "bundler"
+    directory: "/site"
+    schedule:
+      interval: "weekly"
