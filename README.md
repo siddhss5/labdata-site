@@ -81,8 +81,10 @@ dropped).
   no year are listed last, under "Undated", which the year filter does not offer.
 - **An id is a path segment as it is.** Each page's path is its entity's id,
   unchanged, so before it writes anything `generate_pages.py` refuses a
-  document whose `schema_version` is not the one the pinned sslabdata writes
-  (5), or that has an id which:
+  document whose `schema_version` is not 5, the integer the templates are
+  written for (`SUPPORTED_SCHEMA_VERSION` in the script, not read from the
+  installed sslabdata; the pinned sslabdata writes 5), or that has an id
+  which:
   - does not match `[A-Za-z0-9][A-Za-z0-9._:-]*`;
   - contains `..` or a `:` followed by a letter (Jekyll turns `..` into a
     separator and reads `:name` as a permalink placeholder);
