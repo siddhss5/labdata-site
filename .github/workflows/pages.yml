@@ -1,7 +1,7 @@
 name: Pages
 
 # Builds the demo on every pull request and push to main; deploys it to
-# GitHub Pages on push to main and on manual dispatch.
+# GitHub Pages on push to main and on manual dispatch from main.
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
     uses: ./.github/workflows/build.yml
 
   deploy:
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -37,8 +37,8 @@ jobs:
 
     steps:
     - name: Setup Pages
-      uses: actions/configure-pages@v6
+      uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
 
     - name: Deploy to GitHub Pages
       id: deployment
-      uses: actions/deploy-pages@v5
+      uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
