@@ -1,0 +1,56 @@
+{% comment %}
+A copy of minimal-mistakes-jekyll 4.28.1 `_includes/masthead.html`. The one
+change: a navigation entry whose url is a site path ("/...") is shown only
+when the site has a page at that path, so an entry for a page that
+scripts/generate_pages.py writes only sometimes, such as /awards/, appears
+exactly when that page does. Its outputs are the theme's: the navigation
+entries are literals in `_data/navigation.yml`, not fields of the data file.
+jekyll-include-cache renders it once for the whole site, which is right, as
+the pages that exist are the same for every page. Whoever upgrades the theme
+must re-check this file against the new upstream masthead.html.
+{% endcomment -%}
+{% assign locale = include.locale | default: site.locale %}
+{% capture logo_path %}{{ site.logo }}{% endcapture %}
+
+<div class="masthead">
+  <div class="masthead__inner-wrap">
+    <div class="masthead__menu">
+      <nav id="site-nav" class="greedy-nav" aria-label="Primary navigation">
+        {% unless logo_path == empty %}
+          <a class="site-logo" href="{{ '/' | relative_url }}"><img src="{{ logo_path | relative_url }}" alt="{{ site.masthead_title | default: site.title }}"></a>
+        {% endunless %}
+        <a class="site-title" href="{{ '/' | relative_url }}">
+          {{ site.masthead_title | default: site.title | escape_once | strip }}
+          {% if site.subtitle %}<span class="site-subtitle">{{ site.subtitle | escape_once | strip }}</span>{% endif %}
+        </a>
+        <ul class="visible-links">
+          {%- for link in site.data.navigation.main -%}
+            {%- assign first_char = link.url | slice: 0 -%}
+            {%- if first_char == "/" -%}
+              {%- assign target = site.pages | where: "url", link.url | first -%}
+              {%- unless target -%}{%- continue -%}{%- endunless -%}
+            {%- endif -%}
+            <li class="masthead__menu-item">
+              <a
+                href="{{ link.url | relative_url }}"
+                {% if link.description %} title="{{ link.description }}"{% endif %}
+                {% if link.target %} target="{{ link.target }}"{% endif %}
+              >{{ link.title }}</a>
+            </li>
+          {%- endfor -%}
+        </ul>
+        {% if site.search == true %}
+        <button class="search__toggle" type="button">
+          <span class="visually-hidden">{{ site.data.ui-text[locale].search_label | default: "Toggle search" }}</span>
+          <i class="fas fa-search"></i>
+        </button>
+        {% endif %}
+        <button class="greedy-nav__toggle hidden" type="button">
+          <span class="visually-hidden">{{ site.data.ui-text[locale].menu_label | default: "Toggle menu" }}</span>
+          <div class="navicon"></div>
+        </button>
+        <ul class="hidden-links hidden"></ul>
+      </nav>
+    </div>
+  </div>
+</div>

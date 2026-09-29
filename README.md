@@ -24,10 +24,10 @@ is not the owner's real lab site.
 
 | Path | What it is |
 |------|------------|
-| [`site/`](site/) | The Jekyll site: `_config.yml`, `_pages/`, `_includes/`, `_data/navigation.yml`, `assets/js/works-filter.js`, `feed.xml` (an Atom feed of the works that have a year, where the theme's footer and head link), and the `Gemfile` / `Gemfile.lock` that pin Jekyll; `_includes/head.html` is a copy of the theme's without its Font Awesome CDN load and with the lab's name escaped in the feed link; re-check it when upgrading the theme |
+| [`site/`](site/) | The Jekyll site: `_config.yml`, `_pages/`, `_includes/`, `_data/navigation.yml`, `assets/js/works-filter.js`, `feed.xml` (an Atom feed of the works that have a year, where the theme's footer and head link), and the `Gemfile` / `Gemfile.lock` that pin Jekyll; `_includes/head.html` is a copy of the theme's without its Font Awesome CDN load and with the lab's name escaped in the feed link, and `_includes/masthead.html` a copy of the theme's that shows a navigation entry for a site path only when a page is there; re-check both when upgrading the theme |
 | [`demo/`](demo/) | Example Lab's `lab.yaml`, `people.yaml`, `projects.yaml`, `collaborators.yaml` and `bib/` |
 | [`scripts/generate_site_config.py`](scripts/generate_site_config.py) | Writes the Jekyll settings that come from `lab.yaml` to `site/_config.generated.yml` |
-| [`scripts/generate_pages.py`](scripts/generate_pages.py) | Writes a page for every work, person, project and co-author in the data file to `site/_entities/`, each linking to the others it names, the co-author graph page, and a `.bib` of each person's and project's works, their `bibtex` fields unchanged |
+| [`scripts/generate_pages.py`](scripts/generate_pages.py) | Writes a page for every work, person, project and co-author in the data file to `site/_entities/`, each linking to the others it names, the co-author graph page, the Awards page when a work has an award, and a `.bib` of each person's and project's works, their `bibtex` fields unchanged |
 | [`tests/`](tests/) | Tests for `generate_site_config.py`, checks on the HTML Jekyll builds from a fixture data file, the works filter script run under node on the built demo, and structural checks (headings, `alt`, `lang`, `<title>`, link names) on every page of the demo built with the theme |
 | [`.github/workflows/`](.github/workflows/) | `build.yml` (the build), `pages.yml` (build on PRs, deploy from `main`), `release-gate.yml` (build against a candidate sslabdata) |
 
@@ -85,9 +85,9 @@ dropped).
   no year are listed last, under "Undated", which the year filter does not offer.
 - **An id is a path segment as it is.** Each page's path is its entity's id,
   unchanged, so before it writes anything `generate_pages.py` refuses a
-  document whose `schema_version` is not 5, the integer the templates are
+  document whose `schema_version` is not 6, the integer the templates are
   written for (`SUPPORTED_SCHEMA_VERSION` in the script, not read from the
-  installed sslabdata; the pinned sslabdata writes 5), or that has an id
+  installed sslabdata; the pinned sslabdata writes 6), or that has an id
   which:
   - does not match `[A-Za-z0-9][A-Za-z0-9._:-]*`;
   - contains `..` or a `:` followed by a letter (Jekyll turns `..` into a
@@ -105,6 +105,23 @@ dropped).
   beside `site/_entities` and replaces `site/_entities` only once every page
   is written, so a failed write, such as an id too long for a file name,
   leaves the previous pages as they were.
+- **Awards are a paper's, listed once on `/awards/`.** Each award in a
+  work's `awards` is a row of the Awards page's one table, **Year | Award |
+  Paper**, where *Paper* is the work's title linking its page. Rows are
+  newest first by the year the award was given; awards with no year come
+  last, with "Undated" as their year. Within a year, rows keep the document's
+  order of works (year descending, then the order they were read), then the
+  order of each work's `awards`. `generate_pages.py` writes the page, and
+  sorts its rows, only when at least one work has an award. Its navigation
+  entry is in `_data/navigation.yml` like the others, and
+  `_includes/masthead.html` shows an entry for a site path only when the
+  site has a page there, so a lab with no awards has neither the page nor
+  the entry. On the works list and every other list of works, and on the
+  work's own page, each award is also a label on the work's entry; an award
+  given in another year than the work's shows that year, as in "Test of Time
+  Award (2026)". An award's name is text, escaped where it is printed: the
+  Awards page is HTML, and on the Markdown pages the label is inside the
+  entry's HTML block, which kramdown does not read.
 - **The co-author graph is a picture of its table.** `/coauthor-graph/` draws
   a line between each lab member and each co-author who share a work, as SVG
   with no script, and lists the same pairs, with the number of works they
@@ -114,7 +131,7 @@ dropped).
 ## The sslabdata pin
 
 This repository installs sslabdata from PyPI at one exact version. The pin is
-authored in one place: the `sslabdata==3.1.0` dependency in
+authored in one place: the `sslabdata==4.0.0` dependency in
 [`pyproject.toml`](pyproject.toml). `uv.lock` is its generated resolution,
 recording that release's download URLs and SHA-256 hashes; do not edit it by
 hand.
@@ -122,7 +139,10 @@ hand.
 To bump the pin, run the release gate (below) against the candidate sslabdata
 git ref, then change the version in `pyproject.toml`, run `uv lock`, and commit
 both files. The build uses `uv sync --locked`, which fails if the two disagree,
-and installs only files whose hashes match the lock.
+and installs only files whose hashes match the lock. For a release that writes
+a new `schema_version`, the gate fails at "Generate site data" (see "An id is
+a path segment as it is" above) until the templates read that version and
+`SUPPORTED_SCHEMA_VERSION` is raised.
 
 ## Build locally
 

@@ -1,5 +1,6 @@
 """Write one Jekyll page per work, person, project and co-author, the
-co-author graph, and a .bib file of each person's and project's works.
+co-author graph, the Awards page when a work has an award, and a .bib file of
+each person's and project's works.
 
 Reads the document sslabdata emits and writes a page for each entity into the
 output directory, replacing what was there. The pages are written into a
@@ -29,7 +30,7 @@ import yaml
 # The schema_version the templates in site/_includes are written for. It is
 # declared here, not read from the installed sslabdata, so that a newer
 # sslabdata cannot pass a document the templates do not read.
-SUPPORTED_SCHEMA_VERSION = 5
+SUPPORTED_SCHEMA_VERSION = 6
 
 # An id that Jekyll writes where its links point: no separator, no leading
 # `.` or `_` that would make Jekyll skip the file, nothing a URL would need to
@@ -144,12 +145,20 @@ def main(data_file, out_dir):
                         "x2": at["coauthor", c][0], "y2": at["coauthor", c][1]}
                        for p, c in sorted(shared)]}
 
+    # Awards page: one row per award, newest first, awards with no year last.
+    # Within a year the rows keep the document's works order (year
+    # descending, then read order) and each work's `awards` order; the sort
+    # is stable, so it only moves rows between years.
+    awards = sorted(({"year": a["year"], "name": a["name"], "bib_id": w["bib_id"], "title": w["title"]}
+                     for w in works.values() for a in w.get("awards") or []),
+                    key=lambda r: (r["year"] is None, -(r["year"] or 0)))
+
     out = Path(out_dir)
     out.parent.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix=f".{out.name}.", dir=out.parent))
     discard = True
     try:
-        write_pages(work / "new", pages, graph)
+        write_pages(work / "new", pages, graph, awards)
         if out.exists() or out.is_symlink():
             os.rename(out, work / "old")
             try:
@@ -171,8 +180,9 @@ def main(data_file, out_dir):
             shutil.rmtree(work, ignore_errors=True)
 
 
-def write_pages(root, pages, graph):
-    """Write `pages` and the co-author `graph` into the new directory `root`."""
+def write_pages(root, pages, graph, awards):
+    """Write `pages`, the co-author `graph` and, if there are any `awards`,
+    the Awards page into the new directory `root`."""
     root.mkdir()
     for section, id_, kind, title, data in pages:
         path = root / section / f"{id_}.html"
@@ -193,6 +203,12 @@ def write_pages(root, pages, graph):
     (root / "coauthor-graph.html").write_text(
         "---\n" + yaml.safe_dump(front, allow_unicode=True, sort_keys=False)
         + "---\n{% include coauthor_graph.html %}\n", encoding="utf-8")
+    # No award, no page; the navigation shows only entries whose page exists.
+    if awards:
+        front = {"title": "Awards", "permalink": "/awards/", "awards": awards}
+        (root / "awards.html").write_text(
+            "---\n" + yaml.safe_dump(front, allow_unicode=True, sort_keys=False)
+            + "---\n{% include awards_page.html %}\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

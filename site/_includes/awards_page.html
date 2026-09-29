@@ -1,0 +1,13 @@
+{%- comment -%}
+The Awards page, written by scripts/generate_pages.py only when a work has an
+award: one row per award, in the order the script sorts them (newest first,
+awards with no year last, under "Undated"; within a year, the document's works
+order, then each work's `awards` order). Paper links the work's page.
+
+Unescaped outputs. Every output not listed here is escaped.
+- `'/publications/' | relative_url`: the site path is a literal in this template; relative_url only prefixes the baseurl from _config.yml.
+{%- endcomment -%}
+<table>
+<thead><tr><th scope="col" style="text-align: right;">Year</th><th scope="col">Award</th><th scope="col">Paper</th></tr></thead>
+<tbody>{% for r in page.awards %}<tr><td style="text-align: right;">{{ r.year | default: "Undated" | escape }}</td><td>{{ r.name | escape }}</td><td><a href="{{ '/publications/' | relative_url }}{{ r.bib_id | escape }}/">{{ r.title | escape }}</a></td></tr>{% endfor %}</tbody>
+</table>

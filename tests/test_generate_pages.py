@@ -133,36 +133,36 @@ def test_an_id_jekyll_keeps_as_it_is_is_accepted(kind, id_, tmp_path):
     assert (out / section / f"{id_}.html").is_file()
 
 
-@pytest.mark.parametrize("version", [4, 6, None, "5", 5.0])
+@pytest.mark.parametrize("version", [5, 7, None, "6", 6.0])
 def test_an_unsupported_schema_version_is_refused(version, tmp_path):
     result, out = generate(tmp_path, {**FIXTURE, "schema_version": version})
     assert result.returncode == 1
     assert f"schema_version {version!r} is not supported" in result.stderr
-    assert "reads schema_version 5" in result.stderr
+    assert "reads schema_version 6" in result.stderr
     assert_nothing_written(tmp_path, out)
 
 
-def test_schema_version_6_is_refused_whatever_sslabdata_is_installed(tmp_path):
-    """The templates read schema_version 5; a version 6 document is refused
-    even beside an sslabdata that writes version 6."""
+def test_schema_version_7_is_refused_whatever_sslabdata_is_installed(tmp_path):
+    """The templates read schema_version 6; a version 7 document is refused
+    even beside an sslabdata that writes version 7."""
     newer = tmp_path / "newer"
     (newer / "sslabdata").mkdir(parents=True)
     (newer / "sslabdata" / "__init__.py").write_text("", encoding="utf-8")
-    (newer / "sslabdata" / "models.py").write_text("SCHEMA_VERSION = 6\n", encoding="utf-8")
+    (newer / "sslabdata" / "models.py").write_text("SCHEMA_VERSION = 7\n", encoding="utf-8")
     env = dict(os.environ, PYTHONPATH=os.pathsep.join(
         p for p in [str(newer), os.environ.get("PYTHONPATH")] if p))
     (tmp_path / "run").mkdir()
-    result, out = generate(tmp_path / "run", {**FIXTURE, "schema_version": 6}, env)
+    result, out = generate(tmp_path / "run", {**FIXTURE, "schema_version": 7}, env)
     assert result.returncode == 1
-    assert "schema_version 6 is not supported" in result.stderr
-    assert "reads schema_version 5" in result.stderr
+    assert "schema_version 7 is not supported" in result.stderr
+    assert "reads schema_version 6" in result.stderr
     assert_nothing_written(tmp_path / "run", out)
 
 
-def test_schema_version_5_is_the_one_read(tmp_path):
-    """The pinned sslabdata writes schema_version 5, the version the templates
+def test_schema_version_6_is_the_one_read(tmp_path):
+    """The pinned sslabdata writes schema_version 6, the version the templates
     read; the fixture, a document it emitted, is accepted."""
-    assert SCHEMA_VERSION == 5 and FIXTURE["schema_version"] == 5
+    assert SCHEMA_VERSION == 6 and FIXTURE["schema_version"] == 6
     result, out = generate(tmp_path, FIXTURE)
     assert result.returncode == 0, result.stderr
     assert not (out / "people" / "old.html").exists()
