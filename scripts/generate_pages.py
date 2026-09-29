@@ -25,7 +25,11 @@ import tempfile
 from pathlib import Path
 
 import yaml
-from sslabdata.models import SCHEMA_VERSION
+
+# The schema_version the templates in site/_includes are written for. It is
+# declared here, not read from the installed sslabdata, so that a newer
+# sslabdata cannot pass a document the templates do not read.
+SUPPORTED_SCHEMA_VERSION = 5
 
 # An id that Jekyll writes where its links point: no separator, no leading
 # `.` or `_` that would make Jekyll skip the file, nothing a URL would need to
@@ -52,9 +56,10 @@ def literal(s):
 
 def main(data_file, out_dir):
     doc = yaml.safe_load(Path(data_file).read_text(encoding="utf-8"))
-    if doc.get("schema_version") != SCHEMA_VERSION:
-        sys.exit(f"{data_file}: schema_version {doc.get('schema_version')!r} is not supported; "
-                 f"this renderer reads schema_version {SCHEMA_VERSION}")
+    version = doc.get("schema_version")
+    if type(version) is not int or version != SUPPORTED_SCHEMA_VERSION:
+        sys.exit(f"{data_file}: schema_version {version!r} is not supported; "
+                 f"this renderer reads schema_version {SUPPORTED_SCHEMA_VERSION}")
     works = {w["bib_id"]: w for w in doc.get("works") or []}
     people = doc.get("people") or []
     projects = doc.get("projects") or []
