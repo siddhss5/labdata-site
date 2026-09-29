@@ -4,9 +4,9 @@ version = "0.0.0"
 description = "Demo Jekyll renderer for documents produced by sslabdata"
 requires-python = ">=3.10"
 dependencies = [
-    # The one place sslabdata is pinned, to an immutable tag or commit. uv.lock is the
-    # generated resolution to a commit; regenerate it with `uv lock`.
-    "sslabdata @ git+https://github.com/siddhss5/sslabdata@2d4c56dab22f5ac88a2fd87ed6ac9cc5bb1a48aa",
+    # The one place sslabdata is pinned, to an exact PyPI release; uv.lock records its
+    # hashes. Regenerate it with `uv lock`.
+    "sslabdata==3.0.0",
     "pyyaml",
 ]
 

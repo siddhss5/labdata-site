@@ -8,7 +8,7 @@ on:
     inputs:
       sslabdata_ref:
         description: >-
-          sslabdata git ref (tag, branch or commit) to build against.
+          sslabdata git ref (tag, branch or full 40-character commit hash) to build against.
           Leave empty to use the pin in pyproject.toml.
         type: string
         default: ''

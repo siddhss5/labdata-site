@@ -91,16 +91,16 @@ dropped).
 
 ## The sslabdata pin
 
-sslabdata has no package release, so this repository installs it from an
-immutable git tag or commit. The pin is authored in one place: the `sslabdata`
-dependency in [`pyproject.toml`](pyproject.toml). `uv.lock` is its generated
-resolution, recording the exact commit; do not edit it by hand.
+This repository installs sslabdata from PyPI at one exact version. The pin is
+authored in one place: the `sslabdata==3.0.0` dependency in
+[`pyproject.toml`](pyproject.toml). `uv.lock` is its generated resolution,
+recording that release's download URLs and SHA-256 hashes; do not edit it by
+hand.
 
-To bump the pin, run the release gate (below) against the new sslabdata tag,
-then change the tag in the `sslabdata` dependency in `pyproject.toml`, run
-`uv lock`, and commit both files. The build uses `uv sync --locked`, so a pin
-changed without regenerating `uv.lock` fails rather than building the old
-commit.
+To bump the pin, run the release gate (below) against the candidate sslabdata
+git ref, then change the version in `pyproject.toml`, run `uv lock`, and commit
+both files. The build uses `uv sync --locked`, which fails if the two disagree,
+and installs only files whose hashes match the lock.
 
 ## Build locally
 
@@ -130,7 +130,7 @@ request and on push to `main`, and deploys it to GitHub Pages on push to
 ## Release gate
 
 [`release-gate.yml`](.github/workflows/release-gate.yml) builds this site
-against a candidate sslabdata git ref — a tag, branch or commit — before that
+against a candidate sslabdata git ref — a tag, a branch, or a commit given as its full 40-character hash — before that
 ref is tagged or pinned here. It runs the same build as `pages.yml` (tests,
 `--validate`, data and config generation, Jekyll build) and never deploys.
 Leaving the ref empty builds against the pin.
@@ -143,4 +143,5 @@ gh workflow run release-gate.yml -R siddhss5/sslabdata-site -f sslabdata_ref=<re
 gh run watch -R siddhss5/sslabdata-site
 ```
 
-The log's "Show sslabdata version" step prints the commit that was built.
+The log's "Show sslabdata version" step prints the version that was built, and
+the commit when it was installed from git (`(from PyPI)` otherwise).
