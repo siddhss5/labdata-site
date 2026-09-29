@@ -174,16 +174,16 @@ wheels = [
 
 [[package]]
 name = "sslabdata"
-version = "3.0.0"
+version = "3.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pybtex" },
     { name = "pylatexenc" },
     { name = "pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4f/87/9e79a345d77f338740c3f85dd0d98026c9625e5f11bab257e9a2c76f9641/sslabdata-3.0.0.tar.gz", hash = "sha256:6d91a92a756afd71bd033a2b21d9ce9a23a2590db33b383d4fa25475aa954893", size = 104059, upload-time = "2026-09-29T03:38:07.909Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/68/66/026b2b81614671c6ba96eddad98b7ea257a3e3b8d800c71ce29bc8b76535/sslabdata-3.1.0.tar.gz", hash = "sha256:fa23590d34e283bec864a317116c5b7983f9c05478a31ea3a9522c035231689c", size = 115096, upload-time = "2026-09-29T15:22:12.318Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3d/43/8688a3208ac61ef2882ccd886b4fe59dd57ca9981a88c9d09e07061157b9/sslabdata-3.0.0-py3-none-any.whl", hash = "sha256:879f4177ec3a38f5943c213292d5965f2eda543d6852d2fae1c45845ba48a06b", size = 67686, upload-time = "2026-09-29T03:38:06.68Z" },
+    { url = "https://files.pythonhosted.org/packages/35/09/384a678ff0923504af7d7e49e12f5f843e22a1ac126454c905f7eb9ef532/sslabdata-3.1.0-py3-none-any.whl", hash = "sha256:dbece1579aaa3bce6d67afa6be9b1eda29d2931d951b3258132015fe479c4553", size = 79744, upload-time = "2026-09-29T15:22:10.84Z" },
 ]
 
 [[package]]
@@ -203,7 +203,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pyyaml" },
-    { name = "sslabdata", specifier = "==3.0.0" },
+    { name = "sslabdata", specifier = "==3.1.0" },
 ]
 
 [package.metadata.requires-dev]

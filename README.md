@@ -112,7 +112,7 @@ dropped).
 ## The sslabdata pin
 
 This repository installs sslabdata from PyPI at one exact version. The pin is
-authored in one place: the `sslabdata==3.0.0` dependency in
+authored in one place: the `sslabdata==3.1.0` dependency in
 [`pyproject.toml`](pyproject.toml). `uv.lock` is its generated resolution,
 recording that release's download URLs and SHA-256 hashes; do not edit it by
 hand.
