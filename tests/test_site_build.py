@@ -172,6 +172,13 @@ STUB_LAYOUT = """<!doctype html>
 """
 
 
+def missing_tool(reason):
+    """Skip for a missing tool, or fail if SITE_REQUIRE_TOOLS=1, as CI sets it."""
+    if os.environ.get("SITE_REQUIRE_TOOLS") == "1":
+        pytest.fail(reason + " (SITE_REQUIRE_TOOLS=1)")
+    pytest.skip(reason)
+
+
 def _jekyll_available():
     if shutil.which("bundle") is None:
         return False
@@ -185,7 +192,7 @@ def build(tmp, data, people_groups=None, theme=False, site_config=None):
     """Build a copy of site/ with `data` as _data/lab.yml; return the output.
     `site_config`, a file such as generate_site_config.py writes, is read last."""
     if not _jekyll_available():
-        pytest.skip("bundle exec jekyll is not available")
+        missing_tool("bundle exec jekyll is not available")
     source = tmp / "site"
     shutil.copytree(SITE, source, ignore=shutil.ignore_patterns(
         "_site", ".jekyll-cache", ".jekyll-metadata", ".bundle", "vendor",

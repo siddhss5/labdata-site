@@ -72,9 +72,17 @@ jobs:
         bundler-cache: true
         working-directory: site
 
-    # After Ruby, so the tests that build the site from a fixture run rather
-    # than skip.
+    # The works-filter tests run the shipped script under node.
+    - name: Set up Node
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: '24'
+
+    # After Ruby and Node. SITE_REQUIRE_TOOLS makes a missing Jekyll or node
+    # fail the tests that need it instead of skipping them.
     - name: Run tests
+      env:
+        SITE_REQUIRE_TOOLS: '1'
       run: |
         uv run --no-sync pytest
 
