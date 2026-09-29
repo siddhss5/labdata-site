@@ -76,6 +76,52 @@ def test_an_id_that_is_another_entitys_bib_path_is_refused(kind, collection, tmp
     assert_nothing_written(tmp_path, out)
 
 
+def test_an_id_too_long_to_be_a_file_name_leaves_the_previous_pages(tmp_path):
+    """An id the checks accept but the file system cannot hold fails while
+    pages are being written; the pages already there stay as they were."""
+    result, out = generate(tmp_path, rename(FIXTURE, ADA, "a" * 300))
+    assert result.returncode == 1
+    assert "File name too long" in result.stderr and "Traceback" not in result.stderr
+    assert_nothing_written(tmp_path, out)
+
+
+def dangle(document, collection, key, id_, field, value="missing"):
+    """`document` with `value` added to `field` of the entity whose `key` is `id_`."""
+    document = yaml.safe_load(yaml.safe_dump(document))
+    entity = next(e for e in document[collection] if e[key] == id_)
+    entity[field] = [*(entity.get(field) or []), value]
+    return document
+
+
+def dangle_author(document, field):
+    """`document` with the first author of SCRIPT naming no entity in `field`."""
+    document = yaml.safe_load(yaml.safe_dump(document))
+    author = next(w for w in document["works"] if w["bib_id"] == SCRIPT)["authors"][0]
+    author.update({"person_id": None, "collaborator_key": None, field: "missing"})
+    return document
+
+
+@pytest.mark.parametrize("document, names", [
+    (lambda: dangle(FIXTURE, "people", "id", ADA, "work_ids"), f"person {ADA!r} names work 'missing'"),
+    (lambda: dangle(FIXTURE, "projects", "id", PROJECT, "work_ids"),
+     f"project {PROJECT!r} names work 'missing'"),
+    (lambda: dangle(FIXTURE, "collaborators", "key", COLLAB, "work_ids"),
+     f"co-author {COLLAB!r} names work 'missing'"),
+    (lambda: dangle(FIXTURE, "projects", "id", PROJECT, "people_ids"),
+     f"project {PROJECT!r} names person 'missing'"),
+    (lambda: dangle(FIXTURE, "works", "bib_id", SCRIPT, "project_ids"),
+     f"work {SCRIPT!r} names project 'missing'"),
+    (lambda: dangle_author(FIXTURE, "person_id"), f"work {SCRIPT!r} names person 'missing'"),
+    (lambda: dangle_author(FIXTURE, "collaborator_key"), f"work {SCRIPT!r} names co-author 'missing'"),
+], ids=["person-works", "project-works", "coauthor-works", "project-people", "work-projects",
+        "author-person", "author-coauthor"])
+def test_a_reference_to_no_entity_is_refused(document, names, tmp_path):
+    result, out = generate(tmp_path, document())
+    assert result.returncode == 1
+    assert names in result.stderr and "Traceback" not in result.stderr
+    assert_nothing_written(tmp_path, out)
+
+
 @pytest.mark.parametrize("id_", ["Smith:2020", "B.Brown"])
 @pytest.mark.parametrize("kind", ENTITIES)
 def test_an_id_jekyll_keeps_as_it_is_is_accepted(kind, id_, tmp_path):
@@ -101,3 +147,5 @@ def test_schema_version_5_is_the_one_read(tmp_path):
     assert SCHEMA_VERSION == 5 and FIXTURE["schema_version"] == 5
     result, out = generate(tmp_path, FIXTURE)
     assert result.returncode == 0, result.stderr
+    assert not (out / "people" / "old.html").exists()
+    assert sorted(p.name for p in (tmp_path / "site").iterdir()) == ["_entities"]
