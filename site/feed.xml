@@ -7,31 +7,36 @@ An Atom feed of the works, newest first, at the path the theme's footer and
 head link to. jekyll-feed does not write its empty posts feed when this file
 is in the source root, so it stays here rather than in _pages/.
 Every string from the data file is escaped. The data file dates a work by its
-year only, so a work's `updated` is the first day of that year, and the
-feed's is that of the newest work, or 1970 when no work has a year; the feed
-is the same on every build. A work with no year has no date to give, so it is
-left out of the feed.
+year only, so a work's `updated` is the first day of that year, written with
+four digits, and the feed's is that of the newest work, or 1970 when no work
+has a year; the feed is the same on every build. A work with no year, or a
+year outside 1 to 9999, has no date to give, so it is left out of the feed.
+The characters XML 1.0 does not allow (C0 controls other than tab, line feed
+and carriage return, and U+FFFE and U+FFFF) are removed from the whole feed,
+since a hand-made document can carry them in any string.
 
 Unescaped outputs. Every output not listed here is escaped.
 - `'/feed.xml' | absolute_url`: the site path is a literal in this template; absolute_url only prefixes the url and baseurl from _config.yml.
 - `'/' | absolute_url`: the site path is a literal in this template; absolute_url only prefixes the url and baseurl from _config.yml.
 - `'/publications/' | absolute_url`: the site path is a literal in this template; absolute_url only prefixes the url and baseurl from _config.yml.
 {%- endcomment -%}
-{%- assign pubs = site.data.lab.works | where_exp: "w", "w.year != nil" -%}
+{%- assign pubs = site.data.lab.works | where_exp: "w", "w.year != nil" | where_exp: "w", "w.year >= 1" | where_exp: "w", "w.year <= 9999" -%}
 {%- assign years = pubs | map: "year" | uniq | sort | reverse -%}
+{%- assign not_xml = "%00 %01 %02 %03 %04 %05 %06 %07 %08 %0B %0C %0E %0F %10 %11 %12 %13 %14 %15 %16 %17 %18 %19 %1A %1B %1C %1D %1E %1F %EF%BF%BE %EF%BF%BF" | split: " " -%}
+{%- capture feed -%}
 <?xml version="1.0" encoding="utf-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
 <title>{{ site.title | xml_escape }} works</title>
 <link href="{{ '/feed.xml' | absolute_url }}" rel="self" type="application/atom+xml"/>
 <link href="{{ '/' | absolute_url }}" rel="alternate" type="text/html"/>
 <id>{{ '/feed.xml' | absolute_url }}</id>
-<updated>{{ years.first | default: 1970 | xml_escape }}-01-01T00:00:00Z</updated>
+<updated>{{ years.first | default: 1970 | prepend: "000" | slice: -4, 4 | xml_escape }}-01-01T00:00:00Z</updated>
 {%- for year in years %}{% assign year_pubs = pubs | where: "year", year %}{% for w in year_pubs %}
 <entry>
 <title type="text">{{ w.title | xml_escape }}</title>
 <link href="{{ '/publications/' | absolute_url }}{{ w.bib_id | xml_escape }}/" rel="alternate" type="text/html"/>
 <id>{{ '/publications/' | absolute_url }}{{ w.bib_id | xml_escape }}/</id>
-<updated>{{ w.year | xml_escape }}-01-01T00:00:00Z</updated>
+<updated>{{ w.year | prepend: "000" | slice: -4, 4 | xml_escape }}-01-01T00:00:00Z</updated>
 {%- for a in w.authors %}
 <author><name>{{ a.name | xml_escape }}</name></author>
 {%- endfor %}
@@ -39,3 +44,6 @@ Unescaped outputs. Every output not listed here is escaped.
 </entry>
 {%- endfor %}{% endfor %}
 </feed>
+{%- endcapture -%}
+{%- for c in not_xml %}{% assign ch = c | url_decode %}{% assign feed = feed | replace: ch, "" %}{% endfor -%}
+{{ feed }}

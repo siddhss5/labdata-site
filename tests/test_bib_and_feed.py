@@ -3,20 +3,21 @@
 Each person and project page with works links to a .bib holding exactly the
 BibTeX of the works it lists, byte for byte as the data file carries it; the
 feed at /feed.xml, which the theme's footer and head link to, is Atom and
-lists every work that has a year, newest first. The built-site checks reuse
-the builds in test_site_build.py and are skipped with them when Bundler or the
-pinned Jekyll is not installed.
+lists every work with a year from 1 to 9999, newest first. The built-site
+checks reuse the builds in test_site_build.py and are skipped with them when
+Bundler or the pinned Jekyll is not installed.
 """
 
 import copy
 import re
+from datetime import datetime
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import pytest
 import yaml
 
-from test_site_build import FIXTURE, NEWCOMER, PI, PLAIN, build, demo, demo_data, page  # noqa: F401
+from test_site_build import FIXTURE, MISSING, NEWCOMER, PI, PLAIN, SCRIPT, build, demo, demo_data, page  # noqa: F401
 
 ATOM = "{http://www.w3.org/2005/Atom}"
 
@@ -136,6 +137,35 @@ def test_feed_leaves_out_undated_works_and_stays_valid(undated, tmp_path):
         assert f"/publications/{PLAIN}/" not in (built / "feed.xml").read_text(encoding="utf-8")
         newest = max(w["year"] for w in document["works"] if w["year"] is not None)
         assert root.findtext(ATOM + "updated") == f"{newest}-01-01T00:00:00Z"
+
+
+# Characters XML 1.0 does not allow, which a hand-made document can carry.
+NOT_XML = "\x00\x01\x08\x0b\x0c\x1f\ufffe\uffff"
+
+
+def test_feed_stays_valid_xml_for_any_year_and_character(tmp_path):
+    """Years 0 and 99999 have no four-digit date, so their works are left out
+    of the feed; year 7 is written 0007. A title with characters XML does not
+    allow appears without them. The built feed.xml, which parses as XML and
+    whose dates each parse as a calendar date, is under tmp_path/_site."""
+    document = copy.deepcopy(FIXTURE)
+    works = {w["bib_id"]: w for w in document["works"]}
+    works[SCRIPT]["year"] = 0
+    works[MISSING]["year"] = 99999
+    works[PLAIN].update({"year": 7, "title": f"Con{NOT_XML}trol\ttab"})
+    built = build(tmp_path, yaml.safe_dump(document, allow_unicode=True))
+    root = ET.parse(built / "feed.xml").getroot()
+    dates = [root.findtext(ATOM + "updated")] + [e.findtext(ATOM + "updated")
+                                                 for e in root.findall(ATOM + "entry")]
+    for d in dates:
+        assert re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ", d), d
+        datetime.fromisoformat(d.replace("Z", "+00:00"))
+    entries = {e.findtext(ATOM + "id").removeprefix("https://fixture.invalid/publications/")
+               .removesuffix("/"): e for e in root.findall(ATOM + "entry")}
+    assert sorted(entries) == sorted(i for i, w in works.items()
+                                     if w["year"] is not None and 1 <= w["year"] <= 9999)
+    assert entries[PLAIN].findtext(ATOM + "updated") == "0007-01-01T00:00:00Z"
+    assert entries[PLAIN].findtext(ATOM + "title") == "Control\ttab"
 
 
 def test_theme_footer_and_head_link_to_the_works_feed(themed):
