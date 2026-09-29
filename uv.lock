@@ -175,11 +175,15 @@ wheels = [
 [[package]]
 name = "sslabdata"
 version = "3.0.0"
-source = { git = "https://github.com/siddhss5/sslabdata?rev=2d4c56dab22f5ac88a2fd87ed6ac9cc5bb1a48aa#2d4c56dab22f5ac88a2fd87ed6ac9cc5bb1a48aa" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pybtex" },
     { name = "pylatexenc" },
     { name = "pyyaml" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4f/87/9e79a345d77f338740c3f85dd0d98026c9625e5f11bab257e9a2c76f9641/sslabdata-3.0.0.tar.gz", hash = "sha256:6d91a92a756afd71bd033a2b21d9ce9a23a2590db33b383d4fa25475aa954893", size = 104059, upload-time = "2026-09-29T03:38:07.909Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3d/43/8688a3208ac61ef2882ccd886b4fe59dd57ca9981a88c9d09e07061157b9/sslabdata-3.0.0-py3-none-any.whl", hash = "sha256:879f4177ec3a38f5943c213292d5965f2eda543d6852d2fae1c45845ba48a06b", size = 67686, upload-time = "2026-09-29T03:38:06.68Z" },
 ]
 
 [[package]]
@@ -199,7 +203,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "pyyaml" },
-    { name = "sslabdata", git = "https://github.com/siddhss5/sslabdata?rev=2d4c56dab22f5ac88a2fd87ed6ac9cc5bb1a48aa" },
+    { name = "sslabdata", specifier = "==3.0.0" },
 ]
 
 [package.metadata.requires-dev]

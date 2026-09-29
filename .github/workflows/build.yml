@@ -50,7 +50,7 @@ jobs:
     # Later steps use --no-sync so a candidate sslabdata is not replaced by the pin.
     - name: Show sslabdata version
       run: |
-        uv run --no-sync python -c "from importlib.metadata import distribution as d; x = d('sslabdata'); print(x.version, x.read_text('direct_url.json'))"
+        uv run --no-sync python -c "from importlib.metadata import distribution as d; x = d('sslabdata'); print(x.version, x.read_text('direct_url.json') or '(from PyPI)')"
 
     - name: Validate demo lab
       run: |
