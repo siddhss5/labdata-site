@@ -132,19 +132,19 @@ def test_an_id_jekyll_keeps_as_it_is_is_accepted(kind, id_, tmp_path):
     assert (out / section / f"{id_}.html").is_file()
 
 
-@pytest.mark.parametrize("version", [SCHEMA_VERSION - 1, SCHEMA_VERSION + 1, None])
+@pytest.mark.parametrize("version", [5, 7, None])
 def test_an_unsupported_schema_version_is_refused(version, tmp_path):
     result, out = generate(tmp_path, {**FIXTURE, "schema_version": version})
     assert result.returncode == 1
     assert f"schema_version {version!r} is not supported" in result.stderr
-    assert f"reads schema_version {SCHEMA_VERSION}" in result.stderr
+    assert "reads schema_version 6" in result.stderr
     assert_nothing_written(tmp_path, out)
 
 
-def test_schema_version_5_is_the_one_read(tmp_path):
-    """The pinned sslabdata writes schema_version 5, the version the templates
+def test_schema_version_6_is_the_one_read(tmp_path):
+    """The pinned sslabdata writes schema_version 6, the version the templates
     read; the fixture, a document it emitted, is accepted."""
-    assert SCHEMA_VERSION == 5 and FIXTURE["schema_version"] == 5
+    assert SCHEMA_VERSION == 6 and FIXTURE["schema_version"] == 6
     result, out = generate(tmp_path, FIXTURE)
     assert result.returncode == 0, result.stderr
     assert not (out / "people" / "old.html").exists()

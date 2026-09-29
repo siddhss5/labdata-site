@@ -1,7 +1,10 @@
 {%- comment -%}
 One work, as it is listed: the title links to the work's own page, where its
 abstract and BibTeX are. Every string from the data file is plain text and is
-escaped where it is printed; `note` is plain text too, not Markdown.
+escaped where it is printed; `note` is plain text too, not Markdown. Each
+award is a label; one given in another year than the work's shows that year.
+The entry is an HTML block, so kramdown, on the Markdown pages that include
+it, does not read the text inside it.
 
 Unescaped outputs. Every output not listed here is escaped.
 - `'/publications/' | relative_url`: the site path is a literal in this template; relative_url only prefixes the baseurl from _config.yml.
@@ -18,6 +21,12 @@ Unescaped outputs. Every output not listed here is escaped.
     {% include venue.html work=include.pub %}
     {% if include.pub.note %}<br><strong>{{ include.pub.note | escape }}</strong>{% endif %}
   </div>
+  {%- if include.pub.awards.size > 0 %}
+  <div class="pub-awards" style="margin-bottom: 0.3em;">
+    {% for award in include.pub.awards %}<span class="pub-award btn btn--warning btn--small" style="cursor: default; margin: 0.1em;">{{ award.name | escape }}{% if award.year and award.year != include.pub.year %} ({{ award.year | escape }}){% endif %}</span>
+    {% endfor %}
+  </div>
+  {%- endif %}
   <div>
     {% include work_link.html work=include.pub kind="pdf" text="PDF" class="btn btn--inverse btn--small" blank=true %}
     {% include work_link.html work=include.pub kind="doi" text="DOI" class="btn btn--inverse btn--small" blank=true %}

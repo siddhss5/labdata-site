@@ -1,5 +1,6 @@
 """Write one Jekyll page per work, person, project and co-author, the
-co-author graph, and a .bib file of each person's and project's works.
+co-author graph, the Awards page when a work has an award, and a .bib file of
+each person's and project's works.
 
 Reads the document sslabdata emits and writes a page for each entity into the
 output directory, replacing what was there. The pages are written into a
@@ -25,7 +26,11 @@ import tempfile
 from pathlib import Path
 
 import yaml
-from sslabdata.models import SCHEMA_VERSION
+
+# The document version the templates read. It is this renderer's, not the
+# installed sslabdata's: a document of another version is refused rather than
+# rendered by templates that were not written for it.
+SUPPORTED_SCHEMA_VERSION = 6
 
 # An id that Jekyll writes where its links point: no separator, no leading
 # `.` or `_` that would make Jekyll skip the file, nothing a URL would need to
@@ -52,9 +57,9 @@ def literal(s):
 
 def main(data_file, out_dir):
     doc = yaml.safe_load(Path(data_file).read_text(encoding="utf-8"))
-    if doc.get("schema_version") != SCHEMA_VERSION:
+    if doc.get("schema_version") != SUPPORTED_SCHEMA_VERSION:
         sys.exit(f"{data_file}: schema_version {doc.get('schema_version')!r} is not supported; "
-                 f"this renderer reads schema_version {SCHEMA_VERSION}")
+                 f"this renderer reads schema_version {SUPPORTED_SCHEMA_VERSION}")
     works = {w["bib_id"]: w for w in doc.get("works") or []}
     people = doc.get("people") or []
     projects = doc.get("projects") or []
@@ -139,12 +144,20 @@ def main(data_file, out_dir):
                         "x2": at["coauthor", c][0], "y2": at["coauthor", c][1]}
                        for p, c in sorted(shared)]}
 
+    # Awards page: one row per award, newest first, awards with no year last.
+    # Within a year the rows keep the document's works order (year
+    # descending, then read order) and each work's `awards` order; the sort
+    # is stable, so it only moves rows between years.
+    awards = sorted(({"year": a["year"], "name": a["name"], "bib_id": w["bib_id"], "title": w["title"]}
+                     for w in works.values() for a in w.get("awards") or []),
+                    key=lambda r: (r["year"] is None, -(r["year"] or 0)))
+
     out = Path(out_dir)
     out.parent.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix=f".{out.name}.", dir=out.parent))
     discard = True
     try:
-        write_pages(work / "new", pages, graph)
+        write_pages(work / "new", pages, graph, awards)
         if out.exists() or out.is_symlink():
             os.rename(out, work / "old")
             try:
@@ -166,8 +179,9 @@ def main(data_file, out_dir):
             shutil.rmtree(work, ignore_errors=True)
 
 
-def write_pages(root, pages, graph):
-    """Write `pages` and the co-author `graph` into the new directory `root`."""
+def write_pages(root, pages, graph, awards):
+    """Write `pages`, the co-author `graph` and, if there are any `awards`,
+    the Awards page into the new directory `root`."""
     root.mkdir()
     for section, id_, kind, title, data in pages:
         path = root / section / f"{id_}.html"
@@ -188,6 +202,12 @@ def write_pages(root, pages, graph):
     (root / "coauthor-graph.html").write_text(
         "---\n" + yaml.safe_dump(front, allow_unicode=True, sort_keys=False)
         + "---\n{% include coauthor_graph.html %}\n", encoding="utf-8")
+    # No award, no page; the navigation shows only entries whose page exists.
+    if awards:
+        front = {"title": "Awards", "permalink": "/awards/", "awards": awards}
+        (root / "awards.html").write_text(
+            "---\n" + yaml.safe_dump(front, allow_unicode=True, sort_keys=False)
+            + "---\n{% include awards_page.html %}\n", encoding="utf-8")
 
 
 if __name__ == "__main__":

@@ -7,3 +7,7 @@ main:
     url: /projects/
   - title: "Co-authors"
     url: /coauthor-graph/
+  # Written only when a work has an award; masthead.html shows an entry for
+  # a site path only when a page is there.
+  - title: "Awards"
+    url: /awards/

@@ -7,8 +7,9 @@ fields of the same document. The site
 is copied to a temporary directory with the fixture as `_data/lab.yml` and
 built with the pinned gems (`site/Gemfile.lock`). The theme is switched off so
 the checks cover only this repository. In its place a stub `single` layout
-prints the page title and the navigation from `_data/navigation.yml`, the two
-values the theme's layout takes from this repository; the other checks are on
+prints the page title and the navigation from `_data/navigation.yml`, which
+it filters as `_includes/masthead.html` does, the two values the theme's
+layout takes from this repository; the other checks are on
 page content, which the theme does not produce.
 
 Before each build, scripts/generate_pages.py writes the entity pages from the
@@ -91,6 +92,18 @@ NEWCOMER = "newcomer"
 # Its URL is not one of BAD_URLS, which no page may contain even as text.
 MARKDOWN_ROLE = "[x](javascript:alert(document.domain)) **b**"
 
+# Awards the fixture adds. SCRIPT has several, one given in a year other than
+# the work's; the hostile one holds HTML, Markdown, kramdown typography and
+# Liquid. MISSING has one with no year.
+AWARD_HOSTILE = ('Best <b>Paper</b> *Award* [x](https://award.invalid/) -- "quoted" '
+                 '{{ site.title }} {% if true %}liquid{% endif %}')
+FIXTURE_AWARDS = {
+    SCRIPT: [{"name": AWARD_HOSTILE, "year": 2025}, {"name": "Test of Time Award", "year": 2035},
+             {"name": "Audience Choice Award", "year": 2025}],
+    PLAIN: [{"name": "A Systems Paper Award", "year": 2025}],
+    MISSING: [{"name": "Honourable Mention", "year": None}],
+}
+
 
 def fixture_document(document):
     """The demo document the pinned sslabdata emits, with its strings, links
@@ -125,6 +138,8 @@ def fixture_document(document):
                               "category": "<b>Journal</b> Papers",
                               "abstract": "An abstract with <img src=x onerror=alert(2)>."})
         works[bib_id]["venue"]["name"] = "*Journal* <em>of</em> Tests"
+    for bib_id, awards in FIXTURE_AWARDS.items():
+        works[bib_id]["awards"] = awards
     for w in works.values():
         for a in w["authors"]:
             if a["person_id"] == ADA:
@@ -167,7 +182,7 @@ PEOPLE_GROUPS = [{"title": "Faculty", "roles": ["professor"]},
 # The title is filtered as the theme's seo.html and single.html filter it.
 STUB_LAYOUT = """<!doctype html>
 <title>{{ page.title | markdownify | strip_html | strip_newlines | escape_once }}</title>
-<nav>{% for item in site.data.navigation.main %}<a href="{{ item.url | relative_url }}">{{ item.title | escape }}</a>{% endfor %}</nav>
+<nav>{% for item in site.data.navigation.main %}{% assign first_char = item.url | slice: 0 %}{% if first_char == "/" %}{% assign target = site.pages | where: "url", item.url | first %}{% unless target %}{% continue %}{% endunless %}{% endif %}<a href="{{ item.url | relative_url }}">{{ item.title | escape }}</a>{% endfor %}</nav>
 <h1 class="page-title">{{ page.title | markdownify | remove: "<p>" | remove: "</p>" | strip }}</h1>
 {{ content }}
 """
@@ -918,3 +933,130 @@ def test_lab_name_is_text_in_the_feed_link_on_every_page(tmp_path):
         assert parser.titles == [f"{LAB_NAME} Feed"], p
         assert "x" not in parser.images, p
         assert "<img src=x" not in text, p
+
+
+class AwardsTable(HTMLParser):
+    """Each row of a table as (year, award, link target, paper), as text."""
+
+    def __init__(self):
+        super().__init__()
+        self.rows, self.cell, self.href = [], None, None
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "tr":
+            self.rows.append([])
+        elif tag == "td":
+            self.cell = ""
+        elif tag == "a" and self.cell is not None:
+            self.href = dict(attrs).get("href")
+
+    def handle_endtag(self, tag):
+        if tag == "td":
+            self.rows[-1].append(self.cell)
+            if len(self.rows[-1]) == 3:
+                self.rows[-1].insert(2, self.href)
+            self.cell = self.href = None
+
+    def handle_data(self, data):
+        if self.cell is not None:
+            self.cell += data
+
+
+def awards_rows(built):
+    table = AwardsTable()
+    table.feed(page(built, "awards"))
+    return [tuple(r) for r in table.rows if r]
+
+
+def award_labels(text):
+    """The award labels of each work entry in `text`, keyed by the work its title links."""
+    labels = {}
+    for entry in text.split('<div class="pub-entry"')[1:]:
+        bib_id = re.search(r'<a href="/publications/([^"]+)/">', entry)[1]
+        labels[bib_id] = [html.unescape(l) for l in
+                          re.findall(r'<span class="pub-award[^"]*"[^>]*>(.*?)</span>', entry, re.S)]
+    return labels
+
+
+def test_awards_page_lists_every_award_once_newest_first_linking_its_work(built):
+    """Newest first; the undated award last; within a year, in the document's
+    works order (SCRIPT before PLAIN, and cote2024pantry before
+    brown2024blend, which neither name nor id order gives), then the order of
+    the work's `awards`."""
+    order = [w["bib_id"] for w in FIXTURE["works"]]
+    assert order.index(SCRIPT) < order.index(PLAIN)
+    assert order.index("cote2024pantry") < order.index("brown2024blend")
+    rows = awards_rows(built)
+    assert rows == [
+        ("2035", "Test of Time Award", f"/publications/{SCRIPT}/", SCRIPT_TITLE),
+        ("2025", AWARD_HOSTILE, f"/publications/{SCRIPT}/", SCRIPT_TITLE),
+        ("2025", "Audience Choice Award", f"/publications/{SCRIPT}/", SCRIPT_TITLE),
+        ("2025", "A Systems Paper Award", f"/publications/{PLAIN}/", "A plain title"),
+        ("2024", "Best Paper Award", "/publications/cote2024pantry/",
+         next(w["title"] for w in FIXTURE["works"] if w["bib_id"] == "cote2024pantry")),
+        ("2024", "Best Student Paper Award Finalist", "/publications/brown2024blend/",
+         next(w["title"] for w in FIXTURE["works"] if w["bib_id"] == "brown2024blend")),
+        ("Undated", "Honourable Mention", f"/publications/{MISSING}/", "An input link nobody found"),
+    ]
+    assert len(rows) == sum(len(w["awards"]) for w in FIXTURE["works"])
+    for _, _, href, _ in rows:
+        assert (built / href.strip("/") / "index.html").is_file(), href
+
+
+def test_award_text_is_escaped_and_never_markup(built):
+    """The award's name is printed escaped wherever it is shown; its HTML,
+    Markdown and Liquid are none of them read (the rows and labels, compared
+    after unescaping, show that no typography was applied either)."""
+    for path in ["awards", "publications", f"publications/{SCRIPT}"]:
+        text = page(built, path)
+        assert html.escape(AWARD_HOSTILE) in text, path
+    for raw in ["<b>Paper</b>", "<em>Award</em>", 'href="https://award.invalid/']:
+        assert raw not in all_html(built), raw
+
+
+@pytest.mark.parametrize("path", ["publications", "", f"people/{ADA}", f"publications/{SCRIPT}",
+                                  f"publications/{MISSING}"])
+def test_awards_are_labels_on_work_entries_and_work_pages(built, path):
+    """Each award is a label on its work's entry, as text; an award given in
+    another year than the work's shows that year."""
+    labels = award_labels(page(built, path))
+    expected = {SCRIPT: [AWARD_HOSTILE, "Test of Time Award (2035)", "Audience Choice Award"],
+                PLAIN: ["A Systems Paper Award"], MISSING: ["Honourable Mention"]}
+    shown = {k: v for k, v in labels.items() if k in expected}
+    assert shown, path
+    for bib_id, names in shown.items():
+        assert names == expected[bib_id], (path, bib_id)
+    assert all(v == [] for k, v in labels.items()
+               if not next(w for w in FIXTURE["works"] if w["bib_id"] == k)["awards"]), path
+
+
+def test_demo_awards_are_on_the_awards_page_and_their_works(demo):
+    built, document = demo
+    awarded = [(w, a) for w in document["works"] for a in w["awards"]]
+    assert len(awarded) == 2
+    rows = awards_rows(built)
+    assert rows == [(str(a["year"]), a["name"], f"/publications/{w['bib_id']}/", w["title"])
+                    for w, a in awarded]
+    for w, a in awarded:
+        for path in ["publications", f"publications/{w['bib_id']}"]:
+            assert award_labels(page(built, path))[w["bib_id"]] == [a["name"]], (path, w["bib_id"])
+
+
+def test_navigation_links_the_awards_page_only_when_a_work_has_an_award(tmp_path):
+    """Built with the theme, a lab with an award links /awards/ from every
+    page's navigation; a lab with none has no Awards page and no link to one."""
+    data, people_groups = demo_data(tmp_path)
+    with_awards = build(tmp_path / "with", data, people_groups, theme=True)
+    document = yaml.safe_load(data)
+    for w in document["works"]:
+        w["awards"] = []
+    without = build(tmp_path / "without", yaml.safe_dump(document, allow_unicode=True),
+                    people_groups, theme=True)
+    assert (with_awards / "awards" / "index.html").is_file()
+    for p in sorted(with_awards.rglob("*.html")):
+        nav = re.search(r'<nav id="site-nav".*?</nav>', p.read_text(encoding="utf-8"), re.S)[0]
+        assert re.search(r'<a\s+href="/awards/"\s*>Awards</a>', nav), p
+    assert not (without / "awards").exists()
+    for p in sorted(without.rglob("*")):
+        if p.is_file():
+            assert "/awards/" not in p.read_text(encoding="utf-8", errors="replace"), p

@@ -134,7 +134,7 @@ def test_every_demo_page_is_structurally_sound(themed_demo):
     pages = sorted(themed_demo.rglob("*.html"))
     # Entity pages, the indexes, the co-author graph and the works list.
     assert len(pages) > 40
-    for path in ["coauthors", "coauthor-graph", "publications", "people", "projects"]:
+    for path in ["coauthors", "coauthor-graph", "publications", "people", "projects", "awards"]:
         assert themed_demo / path / "index.html" in pages, path
     failures = {str(p.relative_to(themed_demo)): problems(p.read_text(encoding="utf-8"))
                 for p in pages}
