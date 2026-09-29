@@ -2,21 +2,26 @@
 co-author graph, and a .bib file of each person's and project's works.
 
 Reads the document sslabdata emits and writes a page for each entity into the
-output directory, replacing what was there. A page's front matter holds the
+output directory, replacing what was there. The pages are written into a
+temporary directory beside it, which replaces it only once every page has been
+written; if a write fails, the previous pages are kept. A page's front matter holds the
 entity and the entities it links to; every relationship is read from the
 document, and this only joins them. The templates in site/_includes/*_page.html
 lay the pages out.
 
 An entity id becomes a file name and a URL path segment as it is, so the
-generator refuses any id outside ID before it removes or writes anything.
+generator refuses any id outside ID, and any reference to an entity the
+document does not hold, before it writes anything.
 
 Usage: generate_pages.py site/_data/lab.yml site/_entities
 """
 
 import math
+import os
 import re
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 import yaml
@@ -69,6 +74,22 @@ def main(data_file, out_dir):
             if e["id"] in bib_owner:
                 sys.exit(f"{data_file}: {kind} id {e['id']!r} is the path of the .bib file of "
                          f"{kind} {bib_owner[e['id']]!r}")
+    # Every reference names an entity of the document.
+    held = {"work": set(works), "person": {p["id"] for p in people},
+            "project": {x["id"] for x in projects}, "co-author": {c["key"] for c in coauthors}}
+    references = [("person", p["id"], "work", p.get("work_ids")) for p in people]
+    references += [("project", x["id"], "work", x.get("work_ids")) for x in projects]
+    references += [("project", x["id"], "person", x.get("people_ids")) for x in projects]
+    references += [("co-author", c["key"], "work", c.get("work_ids")) for c in coauthors]
+    references += [("work", w["bib_id"], "project", w.get("project_ids")) for w in works.values()]
+    references += [("work", w["bib_id"], target, [a[field] for a in w.get("authors") or [] if a.get(field)])
+                   for w in works.values()
+                   for target, field in [("person", "person_id"), ("co-author", "collaborator_key")]]
+    for kind, id_, target, ids in references:
+        for i in ids or []:
+            if i not in held[target]:
+                sys.exit(f"{data_file}: {kind} {id_!r} names {target} {i!r}, "
+                         f"which is not in the document")
 
     def works_of(entity):
         return [works[i] for i in entity.get("work_ids") or []]
@@ -119,9 +140,37 @@ def main(data_file, out_dir):
                        for p, c in sorted(shared)]}
 
     out = Path(out_dir)
-    shutil.rmtree(out, ignore_errors=True)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    work = Path(tempfile.mkdtemp(prefix=f".{out.name}.", dir=out.parent))
+    discard = True
+    try:
+        write_pages(work / "new", pages, graph)
+        if out.exists() or out.is_symlink():
+            os.rename(out, work / "old")
+            try:
+                os.rename(work / "new", out)
+            except OSError:
+                # Put the previous pages back; if that fails too, they stay
+                # in `work` rather than being removed with it.
+                discard = False
+                os.rename(work / "old", out)
+                discard = True
+                raise
+        else:
+            os.rename(work / "new", out)
+    except OSError as e:
+        kept = "the previous pages are kept" if discard else f"the previous pages are in {work / 'old'}"
+        sys.exit(f"{out_dir}: not replaced ({kept}): {e}")
+    finally:
+        if discard:
+            shutil.rmtree(work, ignore_errors=True)
+
+
+def write_pages(root, pages, graph):
+    """Write `pages` and the co-author `graph` into the new directory `root`."""
+    root.mkdir()
     for section, id_, kind, title, data in pages:
-        path = out / section / f"{id_}.html"
+        path = root / section / f"{id_}.html"
         path.parent.mkdir(parents=True, exist_ok=True)
         front = {"title": literal(title), "permalink": f"/{section}/{id_}/", **data}
         path.write_text("---\n" + yaml.safe_dump(front, allow_unicode=True, sort_keys=False)
@@ -132,11 +181,11 @@ def main(data_file, out_dir):
         if kind in ("person", "project") and data["works"]:
             bib = {"layout": None, "permalink": f"/{section}/{id_}.bib",
                    "bibtex": "\n\n".join(w["bibtex"] for w in data["works"] if w.get("bibtex"))}
-            (out / section / f"{id_}.bib").write_text(
+            (root / section / f"{id_}.bib").write_text(
                 "---\n" + yaml.safe_dump(bib, allow_unicode=True, sort_keys=False)
                 + "---\n{{ page.bibtex }}\n", encoding="utf-8")
     front = {"title": "Co-author graph", "permalink": "/coauthor-graph/", **graph}
-    (out / "coauthor-graph.html").write_text(
+    (root / "coauthor-graph.html").write_text(
         "---\n" + yaml.safe_dump(front, allow_unicode=True, sort_keys=False)
         + "---\n{% include coauthor_graph.html %}\n", encoding="utf-8")
 

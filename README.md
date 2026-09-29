@@ -92,6 +92,13 @@ dropped).
     `Smith:2020` builds but `2025:1` and `brown_2025:1` stop the build); or
   - is the path of the `.bib` of a person or project in the same section,
     such as a person `a.bib` beside a person `a` with works.
+
+  It also refuses a document in which a `work_ids`, `people_ids`,
+  `project_ids`, `person_id` or `collaborator_key` names an entity the
+  document does not hold. It writes the pages into a temporary directory
+  beside `site/_entities` and replaces `site/_entities` only once every page
+  is written, so a failed write, such as an id too long for a file name,
+  leaves the previous pages as they were.
 - **The co-author graph is a picture of its table.** `/coauthor-graph/` draws
   a line between each lab member and each co-author who share a work, as SVG
   with no script, and lists the same pairs, with the number of works they
