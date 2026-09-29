@@ -27,9 +27,9 @@ from pathlib import Path
 
 import yaml
 
-# The document version the templates read. It is this renderer's, not the
-# installed sslabdata's: a document of another version is refused rather than
-# rendered by templates that were not written for it.
+# The schema_version the templates in site/_includes are written for. It is
+# declared here, not read from the installed sslabdata, so that a newer
+# sslabdata cannot pass a document the templates do not read.
 SUPPORTED_SCHEMA_VERSION = 6
 
 # An id that Jekyll writes where its links point: no separator, no leading
@@ -57,8 +57,9 @@ def literal(s):
 
 def main(data_file, out_dir):
     doc = yaml.safe_load(Path(data_file).read_text(encoding="utf-8"))
-    if doc.get("schema_version") != SUPPORTED_SCHEMA_VERSION:
-        sys.exit(f"{data_file}: schema_version {doc.get('schema_version')!r} is not supported; "
+    version = doc.get("schema_version")
+    if type(version) is not int or version != SUPPORTED_SCHEMA_VERSION:
+        sys.exit(f"{data_file}: schema_version {version!r} is not supported; "
                  f"this renderer reads schema_version {SUPPORTED_SCHEMA_VERSION}")
     works = {w["bib_id"]: w for w in doc.get("works") or []}
     people = doc.get("people") or []

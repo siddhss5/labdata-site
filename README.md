@@ -85,9 +85,10 @@ dropped).
   no year are listed last, under "Undated", which the year filter does not offer.
 - **An id is a path segment as it is.** Each page's path is its entity's id,
   unchanged, so before it writes anything `generate_pages.py` refuses a
-  document whose `schema_version` is not the one the templates read
-  (`SUPPORTED_SCHEMA_VERSION`, 6, which the pinned sslabdata writes), or that
-  has an id which:
+  document whose `schema_version` is not 6, the integer the templates are
+  written for (`SUPPORTED_SCHEMA_VERSION` in the script, not read from the
+  installed sslabdata; the pinned sslabdata writes 6), or that has an id
+  which:
   - does not match `[A-Za-z0-9][A-Za-z0-9._:-]*`;
   - contains `..` or a `:` followed by a letter (Jekyll turns `..` into a
     separator and reads `:name` as a permalink placeholder);
@@ -137,11 +138,11 @@ hand.
 
 To bump the pin, run the release gate (below) against the candidate sslabdata
 git ref, then change the version in `pyproject.toml`, run `uv lock`, and commit
-both files. A release that writes a new `schema_version` also needs
-`SUPPORTED_SCHEMA_VERSION` in `scripts/generate_pages.py` raised, once the
-templates read the new version; until then the gate fails at "Generate site
-data". The build uses `uv sync --locked`, which fails if the two disagree,
-and installs only files whose hashes match the lock.
+both files. The build uses `uv sync --locked`, which fails if the two disagree,
+and installs only files whose hashes match the lock. For a release that writes
+a new `schema_version`, the gate fails at "Generate site data" (see "An id is
+a path segment as it is" above) until the templates read that version and
+`SUPPORTED_SCHEMA_VERSION` is raised.
 
 ## Build locally
 
