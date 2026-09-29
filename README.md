@@ -80,11 +80,18 @@ dropped).
   (`?year=2021&person=hhughes`), so a filtered view can be shared. Works with
   no year are listed last, under "Undated", which the year filter does not offer.
 - **An id is a path segment as it is.** Each page's path is its entity's id,
-  unchanged, so `generate_pages.py` refuses a document with an id that does
-  not match `[A-Za-z0-9][A-Za-z0-9._:-]*` or that contains `..` or a `:`
-  followed by a letter (Jekyll turns `..` into a separator and reads `:name`
-  as a permalink placeholder), or whose `schema_version` is not the one the
-  pinned sslabdata writes (5), before it writes anything.
+  unchanged, so before it writes anything `generate_pages.py` refuses a
+  document whose `schema_version` is not the one the pinned sslabdata writes
+  (5), or that has an id which:
+  - does not match `[A-Za-z0-9][A-Za-z0-9._:-]*`;
+  - contains `..` or a `:` followed by a letter (Jekyll turns `..` into a
+    separator and reads `:name` as a permalink placeholder);
+  - ends in `.` (Jekyll drops it from the page's path);
+  - holds a `:` after text that is not a URI scheme, a letter then letters,
+    digits, `.` or `-` (Jekyll escapes such a file name as a URI, so
+    `Smith:2020` builds but `2025:1` and `brown_2025:1` stop the build); or
+  - is the path of the `.bib` of a person or project in the same section,
+    such as a person `a.bib` beside a person `a` with works.
 - **The co-author graph is a picture of its table.** `/coauthor-graph/` draws
   a line between each lab member and each co-author who share a work, as SVG
   with no script, and lists the same pairs, with the number of works they

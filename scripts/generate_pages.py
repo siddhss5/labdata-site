@@ -24,10 +24,18 @@ from sslabdata.models import SCHEMA_VERSION
 
 # An id that Jekyll writes where its links point: no separator, no leading
 # `.` or `_` that would make Jekyll skip the file, nothing a URL would need to
-# escape, no `..`, which Jekyll turns into a separator, and no `:` followed by
-# a letter, which Jekyll reads as a permalink placeholder such as `:path`.
-ID = re.compile(r"(?!.*\.\.)(?!.*:[A-Za-z])[A-Za-z0-9][A-Za-z0-9._:-]*")
-ID_RULE = "an id must match [A-Za-z0-9][A-Za-z0-9._:-]* and contain no `..` or `:` followed by a letter"
+# escape, no `..`, which Jekyll turns into a separator, no `:` followed by a
+# letter, which Jekyll reads as a permalink placeholder such as `:path`, and
+# no trailing `.`, which Jekyll drops from the page's path and which makes the
+# .bib permalink hold `..`. Jekyll escapes a file name with a `:` as a URI, so
+# the text before the first `:` must be a URI scheme, a letter then letters,
+# digits, `.` or `-` (`Smith:2020`, not `2025:1` or `brown_2025:1`), or the
+# build stops.
+ID = re.compile(r"(?!.*\.\.)(?!.*:[A-Za-z])(?!.*\.$)(?![0-9][^:]*:)(?![^:]*_[^:]*:)"
+                r"[A-Za-z0-9][A-Za-z0-9._:-]*")
+ID_RULE = ("an id must match [A-Za-z0-9][A-Za-z0-9._:-]* and contain no `..` or `:` followed by a letter, "
+           "must not end in `.`, and, if it holds a `:`, must start with a letter and have no `_` "
+           "before its first `:`")
 
 
 def literal(s):
@@ -52,6 +60,15 @@ def main(data_file, out_dir):
             if not (isinstance(e[key], str) and ID.fullmatch(e[key])):
                 sys.exit(f"{data_file}: {kind} id {e[key]!r} is not one path segment; "
                          f"{ID_RULE}")
+    # A person or project with works has its .bib at /<section>/<id>.bib; an
+    # entity of the same section whose id is `<id>.bib` would need that path
+    # as the directory of its page.
+    for kind, entities in [("person", people), ("project", projects)]:
+        bib_owner = {f"{e['id']}.bib": e["id"] for e in entities if e.get("work_ids")}
+        for e in entities:
+            if e["id"] in bib_owner:
+                sys.exit(f"{data_file}: {kind} id {e['id']!r} is the path of the .bib file of "
+                         f"{kind} {bib_owner[e['id']]!r}")
 
     def works_of(entity):
         return [works[i] for i in entity.get("work_ids") or []]
