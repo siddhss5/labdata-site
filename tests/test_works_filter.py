@@ -22,7 +22,7 @@ from urllib.parse import urlencode
 import pytest
 import yaml
 
-from test_site_build import build, demo_data
+from test_site_build import build, demo_data, missing_tool
 
 
 STUB = r"""
@@ -124,7 +124,7 @@ def run_filter(page, query, inputs=None):
     is the built file the page's one <script> names. Returns the state after
     load, and after the input if there was one."""
     if shutil.which("node") is None:
-        pytest.skip("node is not available")
+        missing_tool("node is not available")
     payload = {"url": "https://fixture.invalid/publications/" + (f"?{query}" if query else ""),
                "fields": page.fields, "entries": [e["attrs"] for e in page.entries],
                "sections": page.sections, "set": inputs}

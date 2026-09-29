@@ -22,15 +22,15 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
     - name: Set up Python
-      uses: actions/setup-python@v7
+      uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
       with:
         python-version: '3.11'
 
     - name: Install uv
-      uses: astral-sh/setup-uv@v10.1.0
+      uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       with:
         version: "0.12.15"
 
@@ -65,16 +65,24 @@ jobs:
     # actions/jekyll-build-pages only reads site/_config.yml, so build with
     # Jekyll directly to layer the settings generated from lab.yaml on top.
     - name: Set up Ruby
-      uses: ruby/setup-ruby@v1
+      uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
       with:
         ruby-version: '3.3'
         # Installs the gems pinned in site/Gemfile.lock (frozen) and caches them.
         bundler-cache: true
         working-directory: site
 
-    # After Ruby, so the tests that build the site from a fixture run rather
-    # than skip.
+    # The works-filter tests run the shipped script under node.
+    - name: Set up Node
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: '24'
+
+    # After Ruby and Node. SITE_REQUIRE_TOOLS makes a missing Jekyll or node
+    # fail the tests that need it instead of skipping them.
     - name: Run tests
+      env:
+        SITE_REQUIRE_TOOLS: '1'
       run: |
         uv run --no-sync pytest
 
@@ -83,9 +91,8 @@ jobs:
       env:
         BUNDLE_FROZEN: 'true'
         JEKYLL_ENV: production
-        JEKYLL_GITHUB_TOKEN: ${{ github.token }}
         PAGES_REPO_NWO: ${{ github.repository }}
       run: bundle exec jekyll build --config _config.yml,_config.generated.yml --destination ../_site
 
     - name: Upload artifact
-      uses: actions/upload-pages-artifact@v5
+      uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
