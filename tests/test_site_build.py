@@ -20,6 +20,7 @@ theme, to check that no page loads anything from another host.
 Skipped when Bundler or the pinned Jekyll is not installed.
 """
 
+import copy
 import html
 import os
 import re
@@ -250,6 +251,31 @@ def demo_data(tmp):
 
 with tempfile.TemporaryDirectory() as _tmp:
     FIXTURE = fixture_document(yaml.safe_load(demo_data(Path(_tmp))[0]))
+
+
+def irregular_document(document):
+    """The fixture with values sslabdata emits with only a warning: people with
+    no role (`role: null`) and with a status other than current or alumni,
+    among people whose role is "other", the title of the no-role group."""
+    document = copy.deepcopy(document)
+    people = {p["id"]: p for p in document["people"]}
+    for person_id in ["ccote", "jjones", "nnolan"]:
+        people[person_id]["role"] = None
+    for person_id in ["eevans", "iingram"]:
+        people[person_id]["role"] = "other"
+    people["ddavis"]["status"] = "former"
+    people["nnolan"]["status"] = "former"
+    people["hhughes"]["status"] = None
+    return document
+
+
+IRREGULAR = irregular_document(FIXTURE)
+
+
+@pytest.fixture(scope="module")
+def irregular(tmp_path_factory):
+    return build(tmp_path_factory.mktemp("irregular"),
+                 yaml.safe_dump(IRREGULAR, allow_unicode=True), PEOPLE_GROUPS)
 
 
 @pytest.fixture(scope="module")
@@ -696,11 +722,13 @@ def people_sections(built):
     return sections
 
 
-@pytest.mark.parametrize("site", ["built", "unconfigured", "demo"])
+@pytest.mark.parametrize("site", ["built", "unconfigured", "demo", "irregular"])
 def test_every_person_appears_exactly_once_on_the_people_page(site, request):
     built = request.getfixturevalue(site)
-    people = built[1]["people"] if site == "demo" else FIXTURE["people"]
-    built = built[0] if site == "demo" else built
+    if site == "demo":
+        built, people = built[0], built[1]["people"]
+    else:
+        people = IRREGULAR["people"] if site == "irregular" else FIXTURE["people"]
     shown = [i for _, ids in people_sections(built) for i in ids]
     assert sorted(shown) == sorted(p["id"] for p in people)
 
@@ -743,6 +771,28 @@ def test_people_group_titled_from_a_markdown_role_is_text(site, request):
     assert re.search(r'<h2[^>]*>' + re.escape(MARKDOWN_ROLE) + '</h2>', text)
     assert 'href="javascript:' not in text
     assert "<strong>" not in text
+
+
+def test_people_with_no_role_or_another_status_are_in_titled_fallback_groups(irregular):
+    """A person with no role is in one group, "Other", after the groups of
+    their status's roles; a person whose status is neither current nor alumni
+    is under "Other Members", after the alumni, grouped by role likewise."""
+    def ids(role, statuses):
+        return [p["id"] for p in IRREGULAR["people"] if p["role"] == role and p["status"] in statuses]
+
+    sections = people_sections(irregular)
+    titles = [t for t, _ in sections]
+    assert all(titles)
+    alumni, others = titles.index("Alumni"), titles.index("Other Members")
+    assert alumni < others
+    assert sections[alumni - 1] == ("Other", ids(None, ["current"]))
+    assert sections[others - 1] == ("Other", ids(None, ["alumni"]))
+    assert sections[-1] == ("Other", ids(None, ["former", None]))
+    assert ("Phd Student", ids("phd_student", ["former", None])) in sections[others:]
+    assert ("Postdoc", ids("postdoc", ["former", None])) in sections[others:]
+    # The groups of the role "other" are titled "Other" too, before the fallback.
+    assert ("Other", ids("other", ["current"])) in sections[:alumni - 1]
+    assert ("Other", ids("other", ["alumni"])) in sections[alumni:others - 1]
 
 
 def test_demo_people_page_groups(demo):

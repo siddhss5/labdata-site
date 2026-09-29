@@ -13,7 +13,9 @@ from html.parser import HTMLParser
 
 import pytest
 
-from test_site_build import build, demo_data
+import yaml
+
+from test_site_build import IRREGULAR, PEOPLE_GROUPS, build, demo_data
 
 
 class Structure(HTMLParser):
@@ -137,3 +139,10 @@ def test_every_demo_page_is_structurally_sound(themed_demo):
     failures = {str(p.relative_to(themed_demo)): problems(p.read_text(encoding="utf-8"))
                 for p in pages}
     assert {p: f for p, f in failures.items() if f} == {}
+
+
+def test_people_page_with_fallback_groups_is_structurally_sound(tmp_path):
+    """No role and an unknown status add groups whose ids and heading levels
+    fit among the others, next to groups of a role titled like them."""
+    site = build(tmp_path, yaml.safe_dump(IRREGULAR, allow_unicode=True), PEOPLE_GROUPS, theme=True)
+    assert problems((site / "people" / "index.html").read_text(encoding="utf-8")) == []
