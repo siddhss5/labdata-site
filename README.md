@@ -42,7 +42,9 @@ dropped).
   `lab.yaml` optionally titles and orders them, e.g.
   `- {title: "Faculty", roles: [professor]}`; a role it does not name gets a
   group of its own, titled from the role (`visiting_scholar` becomes
-  "Visiting Scholar").
+  "Visiting Scholar"). A person with no role is listed under "Other", and a
+  person whose status is neither `current` nor `alumni` under "Other
+  Members", after the alumni, so each person appears exactly once.
 - **Every string is text.** Every string taken from the data file is escaped
   where it is printed, `note` included; none is read as HTML or Markdown.
   A template that prints anything unescaped names it, with the reason, in an
