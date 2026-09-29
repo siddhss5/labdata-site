@@ -2,10 +2,14 @@
 
 import subprocess
 import sys
+from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import unquote, urlsplit
 
 import pytest
 import yaml
+
+from test_site_build import build, demo_data
 
 
 REPO_ROOT = Path(__file__).parent.parent
@@ -31,8 +35,6 @@ class TestGenerateSiteConfig:
         assert config["description"] == lab_config["lab"]["description"]
         assert config["url"] == lab_config["site"]["url"]
         assert config["baseurl"] == lab_config["site"]["baseurl"]
-        # Where the demo is deployed.
-        assert config["url"] + config["baseurl"] == "https://siddhss5.github.io/sslabdata-site"
 
     def test_values_follow_lab_yaml(self, tmp_path):
         lab_yaml = tmp_path / "lab.yaml"
@@ -99,3 +101,49 @@ def test_url_trailing_slash_is_dropped(tmp_path):
                                                  "baseurl": "/lab"}}))
     config = TestGenerateSiteConfig()._run(lab_yaml, tmp_path)
     assert config["url"] + config["baseurl"] == "https://x.example.org/lab"
+
+
+class Links(HTMLParser):
+    """Every href and src on a page."""
+
+    def __init__(self):
+        super().__init__()
+        self.urls = []
+
+    def handle_starttag(self, tag, attrs):
+        self.urls += [v for k, v in attrs if k in ("href", "src") and v]
+
+
+def test_demo_links_resolve_under_the_configured_baseurl(tmp_path):
+    """Built with the theme and the config generate_site_config.py writes from
+    the demo's lab.yaml moved to another url and baseurl, every link on every
+    page to the site itself is under the baseurl and names a file of the build.
+    The build is left in tmp_path/_site."""
+    url, baseurl = "https://lab.invalid", "/deep/base"
+    lab = yaml.safe_load((REPO_ROOT / DEMO_CONFIG).read_text(encoding="utf-8"))
+    lab["site"].update({"url": url, "baseurl": baseurl})
+    lab_yaml = tmp_path / "lab.yaml"
+    lab_yaml.write_text(yaml.safe_dump(lab, allow_unicode=True), encoding="utf-8")
+    config = tmp_path / "moved.yml"
+    subprocess.run([sys.executable, "scripts/generate_site_config.py", lab_yaml, config],
+                   check=True, cwd=REPO_ROOT)
+    data, people_groups = demo_data(tmp_path)
+    built = build(tmp_path, data, people_groups, theme=True, site_config=config)
+    checked, broken = 0, []
+    for page in sorted(built.rglob("*.html")):
+        parser = Links()
+        parser.feed(page.read_text(encoding="utf-8"))
+        for link in parser.urls:
+            parts = urlsplit(link)
+            internal = parts.scheme in ("", "http", "https") and parts.netloc in ("", urlsplit(url).netloc)
+            if not internal or not parts.path:
+                continue
+            checked += 1
+            path = unquote(parts.path)
+            target = built / path.removeprefix(baseurl + "/")
+            if target.is_dir():
+                target = target / "index.html"
+            if not path.startswith(baseurl + "/") or not target.is_file():
+                broken.append((str(page.relative_to(built)), link))
+    assert checked > 100
+    assert broken == []

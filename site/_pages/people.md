@@ -20,9 +20,10 @@ Unescaped outputs. Every output not listed here is escaped.
 Groups come from the roles in the data file, so nobody is left out. The
 optional `site.people_groups` in lab.yaml titles and orders them; each role goes to
 the first group that names it, and any other role gets a group of its own,
-titled from its name.
+titled from its name. People with no role come last, in a group titled
+"Other", which is the only group with no roles.
 {% endcomment %}
-{% assign roles = people | map: "role" | uniq %}
+{% assign roles = people | map: "role" | compact | uniq %}
 {% assign group_titles = "" | split: "" %}
 {% assign group_roles = "" | split: "" %}
 {% assign claimed = "" | split: "" %}
@@ -39,25 +40,43 @@ titled from its name.
   {% assign title = title | strip | default: r %}{% assign rs = "" | split: "" | push: r %}
   {% assign group_titles = group_titles | push: title %}{% assign group_roles = group_roles | push: rs %}
 {% endunless %}{% endfor %}
+{% assign rs = "" | split: "" %}
+{% assign group_titles = group_titles | push: "Other" %}{% assign group_roles = group_roles | push: rs %}
 
-{% assign statuses = "current,alumni" | split: "," %}
+{% comment %}
+Current members come first, then alumni, then, under "Other Members", people
+with any other status. Ids made from a title are its slug, which starts with a
+letter or digit, so the ids of the fallback groups start with "_".
+{% endcomment %}
+{% assign other_members = "" | split: "" %}
+{% for p in people %}{% unless p.status == "current" or p.status == "alumni" %}{% assign other_members = other_members | push: p %}{% endunless %}{% endfor %}
+{% assign statuses = "current,alumni,_other" | split: "," %}
 {% for status in statuses %}
-{% assign members = people | where: "status", status %}
+{% if status == "_other" %}{% assign members = other_members %}{% else %}{% assign members = people | where: "status", status %}{% endif %}
 {% if members.size > 0 %}
 {% if status == "alumni" %}
 ## Alumni
+{% elsif status == "_other" %}
+<h2 id="_other-members">Other Members</h2>
 {% endif %}
 {% for title in group_titles %}
 {% assign rs = group_roles[forloop.index0] %}
+{% if rs.size == 0 %}
+{% assign group = members | where_exp: "p", "p.role == nil" %}{% assign slug = "_other" %}
+{% else %}
 {% assign group = "" | split: "" %}
 {% for r in rs %}{% assign with_role = members | where: "role", r %}{% assign group = group | concat: with_role %}{% endfor %}
+{% assign slug = title | slugify %}
+{% endif %}
 {% if group.size > 0 %}
 {% comment %}The title comes from the data, so the heading is HTML: kramdown would read a
 Markdown heading's escaped text as Markdown.{% endcomment %}
 {% if status == "alumni" %}
-<h3 id="alumni-{{ title | slugify | escape }}">{{ title | escape }}</h3>
+<h3 id="alumni-{{ slug | escape }}">{{ title | escape }}</h3>
+{% elsif status == "_other" %}
+<h3 id="_other-members-{{ slug | escape }}">{{ title | escape }}</h3>
 {% else %}
-<h2 id="{{ title | slugify | escape }}">{{ title | escape }}</h2>
+<h2 id="{{ slug | escape }}">{{ title | escape }}</h2>
 {% endif %}
 
 {% if status == "current" and rs contains "professor" %}
