@@ -45,7 +45,8 @@ def assert_nothing_written(tmp_path, out):
 
 
 @pytest.mark.parametrize("id_", ["../../escaped", "a/b", "two words", "Zoë", ".hidden", "_x", "-x", "",
-                                 "a..b", "x:path", "a:basename", "Smith:robots"])
+                                 "a..b", "x:path", "a:basename", "Smith:robots", "brown_2025:1", "2025:1",
+                                 "a."])
 @pytest.mark.parametrize("kind", ENTITIES)
 def test_an_id_that_is_not_one_path_segment_is_refused(kind, id_, tmp_path):
     collection, key, old = ENTITIES[kind]
@@ -55,6 +56,23 @@ def test_an_id_that_is_not_one_path_segment_is_refused(kind, id_, tmp_path):
     assert result.returncode == 1
     assert f"{kind} id {id_!r} is not one path segment" in result.stderr
     assert "contain no `..` or `:` followed by a letter" in result.stderr
+    assert_nothing_written(tmp_path, out)
+
+
+@pytest.mark.parametrize("kind, collection", [("person", "people"), ("project", "projects")])
+def test_an_id_that_is_another_entitys_bib_path_is_refused(kind, collection, tmp_path):
+    """A person or project with works has a page at /<section>/<id>/ and its
+    .bib at /<section>/<id>.bib; an entity whose id is `<id>.bib` needs that
+    path as a directory, which Jekyll cannot write."""
+    document = yaml.safe_load(yaml.safe_dump(FIXTURE))
+    first, second = document[collection][:2]
+    assert first["work_ids"]
+    second_id = first["id"] + ".bib"
+    document = rename(document, second["id"], second_id)
+    result, out = generate(tmp_path, document)
+    assert result.returncode == 1
+    assert f"{kind} id {second_id!r}" in result.stderr
+    assert f"{kind} {first['id']!r}" in result.stderr
     assert_nothing_written(tmp_path, out)
 
 
