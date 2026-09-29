@@ -1,5 +1,9 @@
 # sslabdata-site
 
+[![Pages](https://github.com/siddhss5/sslabdata-site/actions/workflows/pages.yml/badge.svg?branch=main)](https://github.com/siddhss5/sslabdata-site/actions/workflows/pages.yml)
+[![Demo](https://img.shields.io/badge/demo-live-brightgreen.svg)](https://goodrobot.ai/sslabdata-site/)
+[![sslabdata](https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fraw.githubusercontent.com%2Fsiddhss5%2Fsslabdata-site%2Fmain%2Fpyproject.toml&query=%24.project.dependencies%5B0%5D&label=pinned)](https://pypi.org/project/sslabdata/)
+
 A demo Jekyll renderer for the document that
 [sslabdata](https://github.com/siddhss5/sslabdata) emits.
 
