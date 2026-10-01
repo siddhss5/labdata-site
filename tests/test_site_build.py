@@ -45,6 +45,19 @@ SCRIPT_TITLE = "<script>alert(1)</script> and a tidy kitchen"
 NOTE = "*emphasis* & <b>bold</b>"
 PERSON_NAME = "*Ada* <i>Lovelace</i>"
 
+# A bio with surrounding whitespace and two paragraphs, separated by blank
+# lines one of which holds only spaces; its first paragraph has a line break.
+# It carries HTML, Markdown, kramdown typography and Liquid, all text.
+BIO = ('\n  First line with <b>bold</b>, *stars* & [a link](https://bio.invalid/)  \n'
+       'second line {{ site.title }} {% if true %}liquid{% endif %} -- "quoted"\n'
+       '\n   \n\n'
+       '<script>alert(5)</script> Second paragraph.\n')
+BIO_PARAGRAPHS = [["First line with <b>bold</b>, *stars* & [a link](https://bio.invalid/)",
+                   'second line {{ site.title }} {% if true %}liquid{% endif %} -- "quoted"'],
+                  ["<script>alert(5)</script> Second paragraph."]]
+# A bio of whitespace alone, which has no paragraph.
+BLANK_BIO_PERSON = "ccote"
+
 # Derived links: DOI and arXiv are built from a declared identifier; a PDF is
 # guessed from a pattern.
 DOI_UNCHECKED = "https://doi-derived.invalid/10.1/x"
@@ -150,6 +163,9 @@ def fixture_document(document):
                         "co_advisor": "<i>Someone</i>", "website": BAD_URLS[2],
                         "photo": PHOTO_RELATIVE})
     people[PI].update({"name": "<b>The</b> *PI*", "website": GOOD_URLS[2], "photo": PHOTO_ABSOLUTE})
+    people[ADA]["bio"] = BIO
+    people[PI]["bio"] = None
+    people[BLANK_BIO_PERSON]["bio"] = " \n\n  \t\n"
     for person_id, photo in BAD_PHOTOS.items():
         people[person_id]["photo"] = photo
     # Roles a fixed list of groups would drop, and a professor among the alumni.
@@ -1060,3 +1076,142 @@ def test_navigation_links_the_awards_page_only_when_a_work_has_an_award(tmp_path
     for p in sorted(without.rglob("*")):
         if p.is_file():
             assert "/awards/" not in p.read_text(encoding="utf-8", errors="replace"), p
+
+
+def bio_paragraphs(text):
+    """The bio on a person page, as its paragraphs, each a list of its lines
+    as text; None when the page shows no bio."""
+    m = re.search(r'<div class="person-bio">(.*?)</div>', text, re.S)
+    if m is None:
+        return None
+    return [[html.unescape(line) for line in p.split("<br>")]
+            for p in re.findall(r"<p>(.*?)</p>", m[1], re.S)]
+
+
+def test_a_bio_renders_as_paragraphs_of_lines(built):
+    """Blank lines start a new paragraph, a single line break is a line break,
+    and the whitespace around the bio and its lines is dropped."""
+    assert bio_paragraphs(page(built, f"people/{ADA}")) == BIO_PARAGRAPHS
+
+
+def test_bio_text_is_escaped_and_never_markup(built):
+    """The bio's HTML, Markdown, Liquid and typography are text on the page."""
+    text = page(built, f"people/{ADA}")
+    for raw in ["<b>bold</b>", "<script>alert(5)", "<em>stars</em>", 'href="https://bio.invalid/',
+                "&amp;amp;"]:
+        assert raw not in all_html(built), raw
+    for literal in ["&lt;b&gt;bold&lt;/b&gt;, *stars* &amp; [a link](https://bio.invalid/)",
+                    "{{ site.title }} {% if true %}liquid{% endif %} -- &quot;quoted&quot;",
+                    "&lt;script&gt;alert(5)&lt;/script&gt; Second paragraph."]:
+        assert literal in text, literal
+
+
+@pytest.mark.parametrize("person", [PI, BLANK_BIO_PERSON])
+def test_a_null_or_blank_bio_renders_nothing(built, person):
+    text = page(built, f"people/{person}")
+    assert bio_paragraphs(text) is None
+    assert "<p></p>" not in text
+
+
+@pytest.mark.parametrize("site", ["built", "demo"])
+def test_the_people_page_shows_no_bio(site, request):
+    built = request.getfixturevalue(site)
+    built = built[0] if site == "demo" else built
+    text = page(built, "people")
+    assert "person-bio" not in text
+    assert "Second paragraph" not in text and "fictional PhD student" not in text
+
+
+# Alumni with each combination of present and missing degree, start_year,
+# end_year and current_position, and the line the documented rule gives
+# each; None is no line. Blank strings count as missing, and strings are
+# trimmed and escaped.
+ALUMNI_LINES = [
+    ("PhD", 2006, 2012, "Research Scientist at Facebook", "PhD 2012, now Research Scientist at Facebook"),
+    ("PhD", 2006, 2012, None, "PhD 2012"),
+    ("PhD", 2006, None, "Research Scientist at Facebook", "PhD, now Research Scientist at Facebook"),
+    ("PhD", 2006, None, None, "PhD"),
+    ("PhD", None, 2012, "Research Scientist at Facebook", "PhD 2012, now Research Scientist at Facebook"),
+    ("PhD", None, 2012, None, "PhD 2012"),
+    ("PhD", None, None, "Research Scientist at Facebook", "PhD, now Research Scientist at Facebook"),
+    ("PhD", None, None, None, "PhD"),
+    (None, 2019, 2020, "PhD at Cornell", "2019–2020, now PhD at Cornell"),
+    (None, 2019, 2020, None, "2019–2020"),
+    (None, 2019, None, "PhD at Cornell", "from 2019, now PhD at Cornell"),
+    (None, 2019, None, None, "from 2019"),
+    (None, None, 2020, "PhD at Cornell", "until 2020, now PhD at Cornell"),
+    (None, None, 2020, None, "until 2020"),
+    (None, None, None, "PhD at Cornell", "Now PhD at Cornell"),
+    (None, None, None, None, None),
+    (None, 2020, 2020, "PhD at Cornell", "2020, now PhD at Cornell"),
+    (" ", 2019, 2020, "", "2019–2020"),
+    ("  MS ", None, 2021, " Engineer ", "MS 2021, now Engineer"),
+    ("<b>MS</b>", None, 2021, "*Engineer* & {{ site.title }}",
+     "<b>MS</b> 2021, now *Engineer* & {{ site.title }}"),
+]
+ALUMNI_IDS = [f"alum{i}" for i in range(len(ALUMNI_LINES))]
+
+
+def alumni_document(document):
+    """The fixture with an alumnus for each of ALUMNI_LINES, alternately a
+    PhD student and a postdoc, whose groups' tables differ, and a current
+    member with every field the line is made from."""
+    document = copy.deepcopy(document)
+    for i, (degree, start, end, position, _) in enumerate(ALUMNI_LINES):
+        document["people"].append({**document["people"][0], "id": ALUMNI_IDS[i], "name": f"Alum {i}",
+                                   "role": ["phd_student", "postdoc"][i % 2], "status": "alumni",
+                                   "degree": degree, "start_year": start, "end_year": end,
+                                   "current_position": position, "bio": None, "work_ids": []})
+    document["people"].append({**document["people"][0], "id": "stillhere", "name": "Still Here",
+                               "role": "phd_student", "status": "current", "degree": "PhD",
+                               "start_year": 2019, "end_year": 2020, "current_position": "Student",
+                               "bio": None, "work_ids": []})
+    return document
+
+
+@pytest.fixture(scope="module")
+def alumni(tmp_path_factory):
+    return build(tmp_path_factory.mktemp("alumni"),
+                 yaml.safe_dump(alumni_document(FIXTURE), allow_unicode=True), PEOPLE_GROUPS)
+
+
+def alumni_lines(built, person_id):
+    """The alumni line of `person_id` on the People page and on their own
+    page, as text; None where there is none."""
+    people = page(built, "people")
+    row = re.search(rf'<span id="{re.escape(person_id)}">.*?</td>', people, re.S)[0]
+    on_people = re.search(r'<span class="alumni-line">(.*?)</span>', row, re.S)
+    on_page = re.search(r'<p class="alumni-line">(.*?)</p>', page(built, f"people/{person_id}"), re.S)
+    return [html.unescape(m[1]) if m else None for m in (on_people, on_page)]
+
+
+@pytest.mark.parametrize("person_id, line", zip(ALUMNI_IDS, [x[-1] for x in ALUMNI_LINES]),
+                         ids=ALUMNI_IDS)
+def test_alumni_line_follows_the_rule(alumni, person_id, line):
+    assert alumni_lines(alumni, person_id) == [line, line]
+
+
+def test_alumni_lines_are_escaped_and_never_markup(alumni):
+    for raw in ["<b>MS</b>", "<em>Engineer</em>"]:
+        assert raw not in all_html(alumni), raw
+
+
+def test_a_current_member_has_no_alumni_line(alumni):
+    assert alumni_lines(alumni, "stillhere") == [None, None]
+
+
+def test_demo_bio_and_alumni_lines(demo):
+    built, document = demo
+    assert [p["id"] for p in document["people"] if p["bio"]] == [ADA]
+    assert bio_paragraphs(page(built, f"people/{ADA}")) == [
+        ["Bob Brown is a fictional PhD student in Example Lab, co-advised by Alice Adams and Peggy Park.",
+         "He studies shared control for assistive robot arms."],
+        ["Before joining the lab, he built kitchen robots that never existed."]]
+    assert bio_paragraphs(page(built, f"people/{PI}")) is None
+    assert {p["id"]: alumni_lines(built, p["id"]) for p in document["people"]
+            if p["status"] == "alumni"} == {
+        "hhughes": ["2018–2021, now Assistant Professor, Example State University"] * 2,
+        "iingram": ["PhD 2022, now Research Scientist, Example Robotics Inc."] * 2,
+        "jjones": ["PhD 2023, now Assistant Professor, Example Institute of Technology"] * 2,
+        "nnolan": ["MS 2021, now Software Engineer, Example Automation"] * 2,
+    }

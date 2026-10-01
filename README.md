@@ -54,7 +54,36 @@ dropped).
   A template that prints anything unescaped names it, with the reason, in an
   "Unescaped outputs." comment; only values the templates make themselves
   (counts, literal paths, HTML built by `work_link.html`, URLs from
-  `safe_url.html`) are listed, never a data field.
+  `safe_url.html`, the line `alumni_line.html` escapes) are listed, never a
+  data field.
+- **A bio is plain text, on the person's page only.** A person's `bio` is
+  shown on their page, escaped; none of its HTML, Markdown or Liquid is read,
+  and it never reaches kramdown. `generate_pages.py` splits it into
+  paragraphs of lines (Liquid has no newline to split on): a line ends at a
+  `\r\n`, `\r` or `\n` and is trimmed of surrounding whitespace, and one or
+  more lines left empty end a paragraph, so a blank line starts a new
+  paragraph and a single line break is a `<br>`. A `null` bio, or one of
+  whitespace only, shows nothing. The People page shows no bio, for current
+  members or alumni: it stays a compact list, and the bio is one click away.
+- **The alumni line is made from fields, never from the bio.** Each person
+  whose `status` is not `current` has one line, under their name on the People
+  page (in place of the period and current position columns) and on their
+  page, built by
+  [`site/_includes/alumni_line.html`](site/_includes/alumni_line.html) from
+  `degree`, `start_year`, `end_year` and `current_position` alone. A string
+  that is `null` or whitespace only is missing; a present one is trimmed.
+  First the *when*:
+  - with a `degree`: `<degree> <end_year>`, or `<degree>` when there is no
+    `end_year` (`start_year` is not shown);
+  - otherwise, both years: `<start_year>–<end_year>`, or the one year when they
+    are equal; only `start_year`: `from <start_year>`; only `end_year`:
+    `until <end_year>`; neither: nothing.
+
+  Then the line is `<when>, now <current_position>`; `Now <current_position>`
+  when there is no *when*; `<when>` when there is no `current_position`; and
+  no line at all when both are missing. So `PhD 2012, now Research Scientist
+  at Facebook`, `2019–2020, now PhD at Cornell`, `MS`, `Now Engineer at
+  Example Co`.
 - **Only http, https and mailto links.** A URL from the data file becomes a
   link only through [`site/_includes/safe_url.html`](site/_includes/safe_url.html),
   which drops any other scheme and any relative path.
@@ -85,9 +114,9 @@ dropped).
   no year are listed last, under "Undated", which the year filter does not offer.
 - **An id is a path segment as it is.** Each page's path is its entity's id,
   unchanged, so before it writes anything `generate_pages.py` refuses a
-  document whose `schema_version` is not 6, the integer the templates are
+  document whose `schema_version` is not 7, the integer the templates are
   written for (`SUPPORTED_SCHEMA_VERSION` in the script, not read from the
-  installed sslabdata; the pinned sslabdata writes 6), or that has an id
+  installed sslabdata; the pinned sslabdata writes 7), or that has an id
   which:
   - does not match `[A-Za-z0-9][A-Za-z0-9._:-]*`;
   - contains `..` or a `:` followed by a letter (Jekyll turns `..` into a
@@ -131,7 +160,7 @@ dropped).
 ## The sslabdata pin
 
 This repository installs sslabdata from PyPI at one exact version. The pin is
-authored in one place: the `sslabdata==4.0.0` dependency in
+authored in one place: the `sslabdata==5.0.0` dependency in
 [`pyproject.toml`](pyproject.toml). `uv.lock` is its generated resolution,
 recording that release's download URLs and SHA-256 hashes; do not edit it by
 hand.

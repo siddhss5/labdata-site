@@ -30,7 +30,7 @@ import yaml
 # The schema_version the templates in site/_includes are written for. It is
 # declared here, not read from the installed sslabdata, so that a newer
 # sslabdata cannot pass a document the templates do not read.
-SUPPORTED_SCHEMA_VERSION = 6
+SUPPORTED_SCHEMA_VERSION = 7
 
 # An id that Jekyll writes where its links point: no separator, no leading
 # `.` or `_` that would make Jekyll skip the file, nothing a URL would need to
@@ -53,6 +53,22 @@ def literal(s):
     escape it, so every character but letters, digits and spaces is written as
     an HTML character reference, which Markdown and HTML both show as text."""
     return "".join(c if c.isalnum() or c == " " else f"&#{ord(c)};" for c in s)
+
+
+def paragraphs(text):
+    r"""A bio's paragraphs, each a list of its lines. A line ends at `\r\n`,
+    `\r` or `\n` and is trimmed of surrounding whitespace; a line left empty
+    ends a paragraph. A bio that is null or only whitespace has none. Done here
+    rather than in Liquid, which has no newline literal to split on; the
+    template only escapes each line and joins them with <br>."""
+    out = [[]]
+    for line in re.split(r"\r\n|\r|\n", text or ""):
+        line = line.strip()
+        if line:
+            out[-1].append(line)
+        elif out[-1]:
+            out.append([])
+    return [p for p in out if p]
 
 
 def main(data_file, out_dir):
@@ -110,7 +126,7 @@ def main(data_file, out_dir):
     for p in people:
         in_projects = [x["id"] for x in projects if p["id"] in (x.get("people_ids") or [])]
         pages.append(("people", p["id"], "person", p["name"], {
-            "person": p, "works": works_of(p),
+            "person": p, "bio": paragraphs(p.get("bio")), "works": works_of(p),
             "projects": names(projects, "id", in_projects),
             "coauthors": names(coauthors, "key", authors(works_of(p), "collaborator_key"))}))
     for x in projects:

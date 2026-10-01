@@ -1,0 +1,36 @@
+{%- comment -%}
+The alumni line of `include.person`, escaped, made from its structured fields
+only, never from `bio` (README, "Rendering rules"). A string that is null or
+only whitespace is missing; a present one is trimmed.
+- when: with a degree, "<degree> <end_year>", or "<degree>" with no end_year;
+  otherwise "<start_year>–<end_year>" ("<year>" when they are equal),
+  "from <start_year>", "until <end_year>", or nothing.
+- line: "<when>, now <current_position>", "Now <current_position>" with no
+  when, "<when>" with no current_position, or empty when both are missing.
+Variables are prefixed `alumni_`: an include shares its caller's variables.
+{%- endcomment -%}
+{%- assign alumni_degree = include.person.degree | strip -%}
+{%- assign alumni_position = include.person.current_position | strip -%}
+{%- assign alumni_start = include.person.start_year | strip -%}
+{%- assign alumni_end = include.person.end_year | strip -%}
+{%- if alumni_degree != "" -%}
+  {%- assign alumni_when = alumni_degree -%}
+  {%- if alumni_end != "" -%}{%- assign alumni_when = alumni_when | append: " " | append: alumni_end -%}{%- endif -%}
+{%- elsif alumni_start != "" and alumni_end != "" -%}
+  {%- if alumni_start == alumni_end -%}{%- assign alumni_when = alumni_start -%}
+  {%- else -%}{%- assign alumni_when = alumni_start | append: "–" | append: alumni_end -%}{%- endif -%}
+{%- elsif alumni_start != "" -%}
+  {%- assign alumni_when = "from " | append: alumni_start -%}
+{%- elsif alumni_end != "" -%}
+  {%- assign alumni_when = "until " | append: alumni_end -%}
+{%- else -%}
+  {%- assign alumni_when = "" -%}
+{%- endif -%}
+{%- if alumni_position == "" -%}
+  {%- assign alumni_line = alumni_when -%}
+{%- elsif alumni_when == "" -%}
+  {%- assign alumni_line = "Now " | append: alumni_position -%}
+{%- else -%}
+  {%- assign alumni_line = alumni_when | append: ", now " | append: alumni_position -%}
+{%- endif -%}
+{{- alumni_line | escape -}}

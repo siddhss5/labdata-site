@@ -19,6 +19,13 @@
   website: "https://example.org/people/bbrown"
   co_advisor: "Peggy Park"
   start_year: 2021
+  # Plain text, not Markdown: a blank line starts a paragraph, and a single
+  # line break is kept.
+  bio: |
+    Bob Brown is a fictional PhD student in Example Lab, co-advised by Alice Adams and Peggy Park.
+    He studies shared control for assistive robot arms.
+
+    Before joining the lab, he built kitchen robots that never existed.
 
 - id: "ccote"
   name: "Carol Côté"
