@@ -4,12 +4,16 @@ A person's page, written by scripts/generate_pages.py.
 Unescaped outputs. Every output not listed here is escaped.
 - `url`: a URL captured from safe_url.html, which escapes it.
 - `photo`: a URL captured from photo_url.html, which escapes it.
+- `alumni_line`: text captured from alumni_line.html, which escapes it.
 - `'/projects/' | relative_url`: the site path is a literal in this template; relative_url only prefixes the baseurl from _config.yml.
 - `'/coauthors/' | relative_url`: the site path is a literal in this template; relative_url only prefixes the baseurl from _config.yml.
 - `'/people/' | relative_url`: the site path is a literal in this template; relative_url only prefixes the baseurl from _config.yml.
 {%- endcomment -%}
 {% capture photo %}{% include photo_url.html photo=page.person.photo %}{% endcapture %}{% if photo != "" %}<p><img src="{{ photo }}" alt="{{ page.person.name | escape }}" width="160"></p>{% endif %}
 {% capture url %}{% include safe_url.html url=page.person.website %}{% endcapture %}{% if url != "" %}<p><a href="{{ url }}">Website</a></p>{% endif %}
+{% if page.person.status != "current" %}{% capture alumni_line %}{% include alumni_line.html person=page.person %}{% endcapture %}{% if alumni_line != "" %}<p class="alumni-line">{{ alumni_line }}</p>{% endif %}{% endif %}
+{% comment %}`page.bio` is the bio's paragraphs, each a list of its lines, split by generate_pages.py.{% endcomment %}
+{% if page.bio.size > 0 %}<div class="person-bio">{% for para in page.bio %}<p>{% for line in para %}{{ line | escape }}{% unless forloop.last %}<br>{% endunless %}{% endfor %}</p>{% endfor %}</div>{% endif %}
 {% if page.projects.size > 0 %}
 <h2>Projects</h2>
 <ul>{% for x in page.projects %}<li><a href="{{ '/projects/' | relative_url }}{{ x.id | escape }}/">{{ x.name | escape }}</a></li>{% endfor %}</ul>

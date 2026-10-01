@@ -9,6 +9,7 @@ classes: wide
 Unescaped outputs. Every output not listed here is escaped.
 - `collaborators.size`: a count Liquid computes, not a string from the data file.
 - `photo`: a URL captured from photo_url.html, which escapes it.
+- `alumni_line`: text captured from alumni_line.html, which escapes it.
 - `'/people/' | relative_url`: the site path is a literal in this template; relative_url only prefixes the baseurl from _config.yml.
 - `'/coauthors/' | relative_url`: the site path is a literal in this template; relative_url only prefixes the baseurl from _config.yml.
 {%- endcomment -%}
@@ -91,16 +92,16 @@ Markdown heading's escaped text as Markdown.{% endcomment %}
 </table>
 {% elsif rs contains "postdoc" %}
 <table>
-<thead><tr><th>Name</th><th>Period</th><th>Current Position</th></tr></thead>
+<thead><tr><th>Name</th></tr></thead>
 <tbody>
-{% for p in group %}{% capture photo %}{% include photo_url.html photo=p.photo %}{% endcapture %}<tr><td>{% if photo != "" %}<img src="{{ photo }}" alt="{{ p.name | escape }}" width="48" style="vertical-align: middle; margin-right: 0.5em;">{% endif %}<span id="{{ p.id | escape }}"><a href="{{ '/people/' | relative_url }}{{ p.id | escape }}/">{{ p.name | escape }}</a></span></td><td>{{ p.start_year | escape }}–{{ p.end_year | escape }}</td><td>{{ p.current_position | escape }}</td></tr>
+{% for p in group %}{% capture photo %}{% include photo_url.html photo=p.photo %}{% endcapture %}<tr><td>{% if photo != "" %}<img src="{{ photo }}" alt="{{ p.name | escape }}" width="48" style="vertical-align: middle; margin-right: 0.5em;">{% endif %}<span id="{{ p.id | escape }}"><a href="{{ '/people/' | relative_url }}{{ p.id | escape }}/">{{ p.name | escape }}</a></span>{% capture alumni_line %}{% include alumni_line.html person=p %}{% endcapture %}{% if alumni_line != "" %}<br><span class="alumni-line">{{ alumni_line }}</span>{% endif %}</td></tr>
 {% endfor %}</tbody>
 </table>
 {% else %}
 <table>
-<thead><tr><th>Name</th><th>Co-advisor</th><th>Thesis</th><th>Period</th><th>Current Position</th></tr></thead>
+<thead><tr><th>Name</th><th>Co-advisor</th><th>Thesis</th></tr></thead>
 <tbody>
-{% for p in group %}{% capture photo %}{% include photo_url.html photo=p.photo %}{% endcapture %}<tr><td>{% if photo != "" %}<img src="{{ photo }}" alt="{{ p.name | escape }}" width="48" style="vertical-align: middle; margin-right: 0.5em;">{% endif %}<span id="{{ p.id | escape }}"><a href="{{ '/people/' | relative_url }}{{ p.id | escape }}/">{{ p.name | escape }}</a></span></td><td>{{ p.co_advisor | escape }}</td><td>{{ p.thesis_title | escape }}</td><td>{{ p.start_year | escape }}–{{ p.end_year | escape }}</td><td>{{ p.current_position | escape }}</td></tr>
+{% for p in group %}{% capture photo %}{% include photo_url.html photo=p.photo %}{% endcapture %}<tr><td>{% if photo != "" %}<img src="{{ photo }}" alt="{{ p.name | escape }}" width="48" style="vertical-align: middle; margin-right: 0.5em;">{% endif %}<span id="{{ p.id | escape }}"><a href="{{ '/people/' | relative_url }}{{ p.id | escape }}/">{{ p.name | escape }}</a></span>{% capture alumni_line %}{% include alumni_line.html person=p %}{% endcapture %}{% if alumni_line != "" %}<br><span class="alumni-line">{{ alumni_line }}</span>{% endif %}</td><td>{{ p.co_advisor | escape }}</td><td>{{ p.thesis_title | escape }}</td></tr>
 {% endfor %}</tbody>
 </table>
 {% endif %}
