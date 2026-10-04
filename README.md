@@ -46,7 +46,12 @@ dropped).
   `lab.yaml` optionally titles and orders them, e.g.
   `- {title: "Faculty", roles: [professor]}`; a role it does not name gets a
   group of its own, titled from the role (`visiting_scholar` becomes
-  "Visiting Scholar"). A person with no role is listed under "Other", and a
+  "Visiting Scholar") by
+  [`site/_includes/role_title.html`](site/_includes/role_title.html). A word
+  of the role that is, whole and in any case, one of the degree abbreviations
+  PhD, MS, BS, BA, MA, MSc, BSc or MBA is written that way, so `phd_student`
+  is "PhD Student" and `msc_student` "MSc Student", while `msg_lead` is "Msg
+  Lead" and `masters_student` "Masters Student". A person with no role is listed under "Other", and a
   person whose status is neither `current` nor `alumni` under "Other
   Members", after the alumni, so each person appears exactly once.
 - **Every string is text.** Every string taken from the data file is escaped
@@ -55,7 +60,9 @@ dropped).
   "Unescaped outputs." comment; only values the templates make themselves
   (counts, literal paths, HTML built by `work_link.html`, URLs from
   `safe_url.html`, the line `alumni_line.html` escapes) are listed, never a
-  data field.
+  data field. A helper that only sets a variable for its caller to print,
+  such as `role_title.html` or `year_range.html`, prints nothing, and its
+  caller escapes the variable.
 - **A bio is plain text, on the person's page only.** A person's `bio` is
   shown on their page, escaped; none of its HTML, Markdown or Liquid is read,
   and it never reaches kramdown. `generate_pages.py` splits it into
@@ -75,7 +82,9 @@ dropped).
   First the *when*:
   - with a `degree`: `<degree> <end_year>`, or `<degree>` when there is no
     `end_year` (`start_year` is not shown);
-  - otherwise, both years: `<start_year>–<end_year>`, or the one year when they
+  - otherwise, the years as
+    [`site/_includes/year_range.html`](site/_includes/year_range.html) gives
+    them: both years: `<start_year>–<end_year>`, or the one year when they
     are equal; only `start_year`: `from <start_year>`; only `end_year`:
     `until <end_year>`; neither: nothing.
 
@@ -83,7 +92,24 @@ dropped).
   when there is no *when*; `<when>` when there is no `current_position`; and
   no line at all when both are missing. So `PhD 2012, now Research Scientist
   at Facebook`, `2019–2020, now PhD at Cornell`, `MS`, `Now Engineer at
-  Example Co`.
+  Example Co`. The line describes the current or last role, the fields at the
+  top of the person; a person's `earlier_roles` never change it.
+- **Earlier roles are on the person's page, oldest first.** A person whose
+  `earlier_roles` is not empty has an "Earlier roles" section on their page,
+  one entry per role in the order the data file lists them, oldest first, so
+  it reads in the order the roles were held, up to the current or last role
+  the page's other fields describe. An entry is `<role title>, <years>`, as
+  in `Postdoc, 2022–2024`, with the role titled as the People page titles a
+  group from a role (`role_title.html`; `ms_student` is "MS Student") and the
+  years as the alumni line gives them (`year_range.html`), without the comma
+  when there are none. Below it, each on its own line when present, come
+  `Degree: <degree>`, `Thesis: <thesis_title>` and `Co-advisor: <co_advisor>`,
+  the label the People page gives the current role's co-advisor. A string
+  that is `null` or whitespace only is missing, a present one is trimmed, and
+  every one is escaped. An empty list shows nothing. The People page does not
+  show earlier roles, not even as a hint: each person is listed once, under
+  their current or last role, and stays a compact list, with the earlier
+  roles one click away, as the bio is.
 - **Only http, https and mailto links.** A URL from the data file becomes a
   link only through [`site/_includes/safe_url.html`](site/_includes/safe_url.html),
   which drops any other scheme and any relative path.
@@ -114,9 +140,9 @@ dropped).
   no year are listed last, under "Undated", which the year filter does not offer.
 - **An id is a path segment as it is.** Each page's path is its entity's id,
   unchanged, so before it writes anything `generate_pages.py` refuses a
-  document whose `schema_version` is not 7, the integer the templates are
+  document whose `schema_version` is not 8, the integer the templates are
   written for (`SUPPORTED_SCHEMA_VERSION` in the script, not read from the
-  installed sslabdata; the pinned sslabdata writes 7), or that has an id
+  installed sslabdata; the pinned sslabdata writes 8), or that has an id
   which:
   - does not match `[A-Za-z0-9][A-Za-z0-9._:-]*`;
   - contains `..` or a `:` followed by a letter (Jekyll turns `..` into a
@@ -157,10 +183,40 @@ dropped).
   share, in a table. Nodes sit on a circle in a fixed order (co-authors by
   key, then lab members by id), so every build draws the same picture.
 
+## Listing people by role elsewhere
+
+This site lists each person once, under their current or last role. A
+renderer that lists people under each role they held, such as a CV's table
+of postdocs, reads `earlier_roles` as well as the person's own `role`, so that
+someone who was a postdoc before becoming faculty is in the postdoc table
+with their postdoc years. In Liquid, for example (not part of this site):
+
+```liquid
+<table>
+<thead><tr><th>Name</th><th>Years</th></tr></thead>
+<tbody>
+{% for p in site.data.lab.people %}
+  {% assign held = p.earlier_roles | where: "role", "postdoc" %}
+  {% if p.role == "postdoc" %}{% assign held = held | push: p %}{% endif %}
+  {% for r in held %}
+    {% include year_range.html start=r.start_year end=r.end_year %}
+    <tr><td>{{ p.name | escape }}</td><td>{{ year_range | escape }}</td></tr>
+  {% endfor %}
+{% endfor %}
+</tbody>
+</table>
+```
+
+The person's own fields describe the current or last role and come last, as
+the earlier roles are oldest first; `status` and `current_position` describe
+the person, not a role. sslabdata's
+[`SPEC.md` §5](https://github.com/siddhss5/sslabdata/blob/main/SPEC.md#5-input-versus-derived)
+has the same example in Python.
+
 ## The sslabdata pin
 
 This repository installs sslabdata from PyPI at one exact version. The pin is
-authored in one place: the `sslabdata==5.0.0` dependency in
+authored in one place: the `sslabdata==6.0.0` dependency in
 [`pyproject.toml`](pyproject.toml). `uv.lock` is its generated resolution,
 recording that release's download URLs and SHA-256 hashes; do not edit it by
 hand.

@@ -14,7 +14,12 @@ Unescaped outputs. Every output not listed here is escaped.
 {% if page.person.status != "current" %}{% capture alumni_line %}{% include alumni_line.html person=page.person %}{% endcapture %}{% if alumni_line != "" %}<p class="alumni-line">{{ alumni_line }}</p>{% endif %}{% endif %}
 {% comment %}`page.bio` is the bio's paragraphs, each a list of its lines, split by generate_pages.py.{% endcomment %}
 {% if page.bio.size > 0 %}<div class="person-bio">{% for para in page.bio %}<p>{% for line in para %}{{ line | escape }}{% unless forloop.last %}<br>{% endunless %}{% endfor %}</p>{% endfor %}</div>{% endif %}
-{% if page.projects.size > 0 %}
+{% comment %}Earlier roles, oldest first as the data file lists them, so the list reads
+in the order they were held, up to the role the alumni line describes. A
+string that is null or only whitespace is missing; a present one is trimmed.{% endcomment %}{% if page.person.earlier_roles.size > 0 %}
+<h2>Earlier roles</h2>
+<ul class="earlier-roles">{% for r in page.person.earlier_roles %}{% include role_title.html role=r.role %}{% include year_range.html start=r.start_year end=r.end_year %}{% assign degree = r.degree | strip %}{% assign thesis = r.thesis_title | strip %}{% assign co_advisor = r.co_advisor | strip %}<li>{{ role_title | escape }}{% if year_range != "" %}, {{ year_range | escape }}{% endif %}{% if degree != "" %}<br>Degree: {{ degree | escape }}{% endif %}{% if thesis != "" %}<br>Thesis: {{ thesis | escape }}{% endif %}{% if co_advisor != "" %}<br>Co-advisor: {{ co_advisor | escape }}{% endif %}</li>{% endfor %}</ul>
+{% endif %}{% if page.projects.size > 0 %}
 <h2>Projects</h2>
 <ul>{% for x in page.projects %}<li><a href="{{ '/projects/' | relative_url }}{{ x.id | escape }}/">{{ x.name | escape }}</a></li>{% endfor %}</ul>
 {% endif %}

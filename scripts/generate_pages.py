@@ -30,7 +30,7 @@ import yaml
 # The schema_version the templates in site/_includes are written for. It is
 # declared here, not read from the installed sslabdata, so that a newer
 # sslabdata cannot pass a document the templates do not read.
-SUPPORTED_SCHEMA_VERSION = 7
+SUPPORTED_SCHEMA_VERSION = 8
 
 # An id that Jekyll writes where its links point: no separator, no leading
 # `.` or `_` that would make Jekyll skip the file, nothing a URL would need to
