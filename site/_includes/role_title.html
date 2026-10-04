@@ -1,0 +1,17 @@
+{%- comment -%}
+Sets `role_title` to the title of the role `include.role`, made from its name:
+each word between `_` with its first letter capitalized (`visiting_scholar`
+becomes "Visiting Scholar"), or the role as it is when that leaves nothing.
+Used for the People page's groups that `site.people_groups` does not title and
+for a person's earlier roles. It prints nothing: the caller escapes
+`role_title` where it prints it. Variables are prefixed `role_title`: an
+include shares its caller's variables.
+{%- endcomment -%}
+{%- assign role_title_words = include.role | split: "_" -%}
+{%- assign role_title = "" -%}
+{%- for role_title_w in role_title_words -%}
+  {%- assign role_title_first = role_title_w | slice: 0 | upcase -%}
+  {%- assign role_title_rest = role_title_w | slice: 1, role_title_w.size -%}
+  {%- assign role_title = role_title | append: " " | append: role_title_first | append: role_title_rest -%}
+{%- endfor -%}
+{%- assign role_title = role_title | strip | default: include.role -%}

@@ -6,7 +6,7 @@ requires-python = ">=3.10"
 dependencies = [
     # The one place sslabdata is pinned, to an exact PyPI release; uv.lock records its
     # hashes. Regenerate it with `uv lock`.
-    "sslabdata==5.0.0",
+    "sslabdata==6.0.0",
     "pyyaml",
 ]
 

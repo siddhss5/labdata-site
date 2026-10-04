@@ -1,0 +1,20 @@
+{%- comment -%}
+Sets `year_range` to the years from `include.start` to `include.end`:
+"<start>–<end>", or the one year when they are equal; "from <start>" with only
+a start; "until <end>" with only an end; "" with neither. A year that is null
+or only whitespace is missing. Used by the alumni line and a person's earlier
+roles. It prints nothing: the caller escapes `year_range` where it prints it.
+Variables are prefixed `year_range`: an include shares its caller's variables.
+{%- endcomment -%}
+{%- assign year_range_start = include.start | strip -%}
+{%- assign year_range_end = include.end | strip -%}
+{%- if year_range_start != "" and year_range_end != "" -%}
+  {%- if year_range_start == year_range_end -%}{%- assign year_range = year_range_start -%}
+  {%- else -%}{%- assign year_range = year_range_start | append: "–" | append: year_range_end -%}{%- endif -%}
+{%- elsif year_range_start != "" -%}
+  {%- assign year_range = "from " | append: year_range_start -%}
+{%- elsif year_range_end != "" -%}
+  {%- assign year_range = "until " | append: year_range_end -%}
+{%- else -%}
+  {%- assign year_range = "" -%}
+{%- endif -%}

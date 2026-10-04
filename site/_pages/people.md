@@ -21,7 +21,7 @@ Unescaped outputs. Every output not listed here is escaped.
 Groups come from the roles in the data file, so nobody is left out. The
 optional `site.people_groups` in lab.yaml titles and orders them; each role goes to
 the first group that names it, and any other role gets a group of its own,
-titled from its name. People with no role come last, in a group titled
+titled from its name by role_title.html. People with no role come last, in a group titled
 "Other", which is the only group with no roles.
 {% endcomment %}
 {% assign roles = people | map: "role" | compact | uniq %}
@@ -36,9 +36,7 @@ titled from its name. People with no role come last, in a group titled
   {% if rs.size > 0 %}{% assign group_titles = group_titles | push: g.title %}{% assign group_roles = group_roles | push: rs %}{% endif %}
 {% endfor %}
 {% for r in roles %}{% unless claimed contains r %}
-  {% assign words = r | split: "_" %}{% assign title = "" %}
-  {% for w in words %}{% assign first = w | slice: 0 | upcase %}{% assign rest = w | slice: 1, w.size %}{% assign title = title | append: " " | append: first | append: rest %}{% endfor %}
-  {% assign title = title | strip | default: r %}{% assign rs = "" | split: "" | push: r %}
+  {% include role_title.html role=r %}{% assign title = role_title %}{% assign rs = "" | split: "" | push: r %}
   {% assign group_titles = group_titles | push: title %}{% assign group_roles = group_roles | push: rs %}
 {% endunless %}{% endfor %}
 {% assign rs = "" | split: "" %}
