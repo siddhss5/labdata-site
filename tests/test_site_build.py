@@ -73,7 +73,7 @@ PI_EARLIER = [
 ]
 PI_EARLIER_SHOWN = [
     ["Undergrad, 2004–2008", "Degree: BS", "Thesis: Sorting Socks by Touch"],
-    ["Phd Student, 2008–2013", "Degree: PhD", "Thesis: Planning for Tidy Kitchens",
+    ["PhD Student, 2008–2013", "Degree: PhD", "Thesis: Planning for Tidy Kitchens",
      "Co-advisor: Carl Coe"],
     ["Postdoc, 2013–2015"],
 ]
@@ -813,25 +813,25 @@ def test_people_groups_title_and_order_and_show_each_role_once(built):
     ids = fixture_ids
     assert people_sections(built) == [
         ("Faculty", ids("current", "professor")), ("Research Staff", ids("current", "engineer")),
-        ("Phd Student", ids("current", "phd_student")),
+        ("PhD Student", ids("current", "phd_student")),
         ("Visiting Scholar", ids("current", "visiting_scholar")),
         (MARKDOWN_ROLE, ids("current", MARKDOWN_ROLE)),
         ("Alumni", []), ("Faculty", ids("alumni", "professor")),
-        ("Phd Student", ids("alumni", "phd_student")), ("Postdoc", ids("alumni", "postdoc")),
-        ("Ms Student", ids("alumni", "ms_student")),
+        ("PhD Student", ids("alumni", "phd_student")), ("Postdoc", ids("alumni", "postdoc")),
+        ("MS Student", ids("alumni", "ms_student")),
     ]
 
 
 def test_without_people_groups_each_role_is_titled_from_its_name(unconfigured):
     ids = fixture_ids
     assert people_sections(unconfigured) == [
-        ("Professor", ids("current", "professor")), ("Phd Student", ids("current", "phd_student")),
+        ("Professor", ids("current", "professor")), ("PhD Student", ids("current", "phd_student")),
         ("Engineer", ids("current", "engineer")),
         ("Visiting Scholar", ids("current", "visiting_scholar")),
         (MARKDOWN_ROLE, ids("current", MARKDOWN_ROLE)),
         ("Alumni", []), ("Professor", ids("alumni", "professor")),
-        ("Phd Student", ids("alumni", "phd_student")), ("Postdoc", ids("alumni", "postdoc")),
-        ("Ms Student", ids("alumni", "ms_student")),
+        ("PhD Student", ids("alumni", "phd_student")), ("Postdoc", ids("alumni", "postdoc")),
+        ("MS Student", ids("alumni", "ms_student")),
     ]
 
 
@@ -860,7 +860,7 @@ def test_people_with_no_role_or_another_status_are_in_titled_fallback_groups(irr
     assert sections[alumni - 1] == ("Other", ids(None, ["current"]))
     assert sections[others - 1] == ("Other", ids(None, ["alumni"]))
     assert sections[-1] == ("Other", ids(None, ["former", None]))
-    assert ("Phd Student", ids("phd_student", ["former", None])) in sections[others:]
+    assert ("PhD Student", ids("phd_student", ["former", None])) in sections[others:]
     assert ("Postdoc", ids("postdoc", ["former", None])) in sections[others:]
     # The groups of the role "other" are titled "Other" too, before the fallback.
     assert ("Other", ids("other", ["current"])) in sections[:alumni - 1]
@@ -1299,7 +1299,7 @@ def test_earlier_roles_do_not_change_the_alumni_line(alumni, person_id):
     line = ALUMNI_LINES[ALUMNI_IDS.index(person_id)][-1]
     assert alumni_lines(alumni, person_id) == [line, line]
     assert earlier_roles(page(alumni, f"people/{person_id}")) == [
-        ["Ms Student, 1990–1991", "Degree: MS", "Thesis: An Earlier Thesis", "Co-advisor: Early Coe"]]
+        ["MS Student, 1990–1991", "Degree: MS", "Thesis: An Earlier Thesis", "Co-advisor: Early Coe"]]
 
 
 @pytest.mark.parametrize("site", ["built", "demo"])
@@ -1320,5 +1320,38 @@ def test_demo_earlier_roles(demo):
     built, document = demo
     shown = {p["id"]: earlier_roles(page(built, f"people/{p['id']}")) for p in document["people"]}
     assert {k: v for k, v in shown.items() if v is not None} == {
-        "ccote": [["Ms Student, 2020–2022", "Degree: MS",
+        "ccote": [["MS Student, 2020–2022", "Degree: MS",
                    "Thesis: Tactile Sensing for Grasping in Clutter"]]}
+
+
+# Roles and the titles made from them: a degree abbreviation, as a whole word
+# in any case, keeps its conventional form; any other word, including one
+# that starts with an abbreviation, is capitalized.
+ROLE_TITLES = {"ms_student": "MS Student", "phd_student": "PhD Student", "msc_student": "MSc Student",
+               "PHD_candidate": "PhD Candidate", "visiting_scholar": "Visiting Scholar",
+               "msg_lead": "Msg Lead", "masters_student": "Masters Student"}
+
+
+def roles_document(document):
+    """The fixture with one current member in each of ROLE_TITLES, and NEWCOMER
+    with each as an earlier role."""
+    document = copy.deepcopy(document)
+    base = next(p for p in document["people"] if p["id"] == NEWCOMER)
+    for i, role in enumerate(ROLE_TITLES):
+        document["people"].append({**base, "id": f"role{i}", "name": f"Role {i}", "role": role,
+                                   "status": "current", "earlier_roles": []})
+    base["earlier_roles"] = [{"role": role, "start_year": 2000 + i, "end_year": 2000 + i, "degree": None,
+                              "thesis_title": None, "co_advisor": None}
+                             for i, role in enumerate(ROLE_TITLES)]
+    return document
+
+
+def test_role_titles_keep_degree_abbreviations(tmp_path):
+    """Built with no people_groups, the People page's group titles and a
+    person's earlier roles title each role the same way."""
+    document = roles_document(FIXTURE)
+    built = build(tmp_path, yaml.safe_dump(document, allow_unicode=True))
+    groups = {i: t for t, ids in people_sections(built) for i in ids}
+    assert {role: groups[f"role{i}"] for i, role in enumerate(ROLE_TITLES)} == ROLE_TITLES
+    assert earlier_roles(page(built, f"people/{NEWCOMER}")) == [
+        [f"{title}, {2000 + i}"] for i, title in enumerate(ROLE_TITLES.values())]

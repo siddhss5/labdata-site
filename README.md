@@ -47,7 +47,11 @@ dropped).
   `- {title: "Faculty", roles: [professor]}`; a role it does not name gets a
   group of its own, titled from the role (`visiting_scholar` becomes
   "Visiting Scholar") by
-  [`site/_includes/role_title.html`](site/_includes/role_title.html). A person with no role is listed under "Other", and a
+  [`site/_includes/role_title.html`](site/_includes/role_title.html). A word
+  of the role that is, whole and in any case, one of the degree abbreviations
+  PhD, MS, BS, BA, MA, MSc, BSc or MBA is written that way, so `phd_student`
+  is "PhD Student" and `msc_student` "MSc Student", while `msg_lead` is "Msg
+  Lead" and `masters_student` "Masters Student". A person with no role is listed under "Other", and a
   person whose status is neither `current` nor `alumni` under "Other
   Members", after the alumni, so each person appears exactly once.
 - **Every string is text.** Every string taken from the data file is escaped
@@ -96,7 +100,7 @@ dropped).
   it reads in the order the roles were held, up to the current or last role
   the page's other fields describe. An entry is `<role title>, <years>`, as
   in `Postdoc, 2022–2024`, with the role titled as the People page titles a
-  group from a role (`role_title.html`; `ms_student` is "Ms Student") and the
+  group from a role (`role_title.html`; `ms_student` is "MS Student") and the
   years as the alumni line gives them (`year_range.html`), without the comma
   when there are none. Below it, each on its own line when present, come
   `Degree: <degree>`, `Thesis: <thesis_title>` and `Co-advisor: <co_advisor>`,
